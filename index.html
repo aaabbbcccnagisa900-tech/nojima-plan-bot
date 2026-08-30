@@ -1,0 +1,3573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>料金プラン相談Bot</title>
+
+<style>
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #171717;
+  --sub: #6b7280;
+  --line: #e5e7eb;
+  --black: #111111;
+  --green: #087f5b;
+  --orange: #f97316;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Helvetica Neue",
+    "Noto Sans JP",
+    sans-serif;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+.container {
+  width: min(720px, 100%);
+  margin: auto;
+  min-height: 100vh;
+}
+
+/* HEADER */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 18px 18px 14px;
+  background: rgba(245,246,248,.94);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--line);
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.subtitle {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.progress {
+  margin-top: 14px;
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--black);
+  transition: width .25s ease;
+}
+
+/* MAIN */
+
+main {
+  padding: 18px 15px 50px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.06);
+  border: 1px solid rgba(0,0,0,.04);
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  line-height: 1.35;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.description {
+  margin: 0 0 20px;
+  color: var(--sub);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* CHOICES */
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.choice-grid.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.choice {
+  width: 100%;
+  min-height: 66px;
+  padding: 14px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  text-align: left;
+  cursor: pointer;
+  transition: .15s;
+}
+
+.choice:hover {
+  border-color: #9ca3af;
+}
+
+.choice.selected {
+  border: 2px solid var(--black);
+  background: #f8fafc;
+  padding: 13px;
+}
+
+.choice-title {
+  display: block;
+  font-weight: 750;
+  font-size: 14px;
+}
+
+.choice-sub {
+  display: block;
+  margin-top: 4px;
+  color: var(--sub);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* INPUT */
+
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.input-box {
+  min-width: 0;
+}
+
+.label {
+  display: block;
+  margin: 13px 0 7px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.data-input {
+  display: block !important;
+  width: 100% !important;
+  height: 54px !important;
+  padding: 12px 14px !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  font-size: 17px !important;
+  line-height: 1.2 !important;
+  outline: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 20 !important;
+}
+
+.data-input:focus {
+  border: 2px solid #111111 !important;
+}
+
+.unit {
+  margin-top: 6px;
+  color: var(--sub);
+  font-size: 11px;
+}
+
+/* BUTTONS */
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.primary,
+.secondary {
+  border: 0;
+  border-radius: 15px;
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.primary {
+  flex: 1;
+  background: var(--black);
+  color: white;
+}
+
+.secondary {
+  background: #eef0f3;
+  color: #333;
+}
+
+/* TAG */
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.tag {
+  padding: 5px 9px;
+  background: #f1f3f5;
+  border-radius: 999px;
+  color: #475467;
+  font-size: 11px;
+}
+
+/* RESULT */
+
+.result {
+  margin-top: 12px;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+.result:first-child {
+  border: 2px solid var(--black);
+}
+
+.rank {
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.plan-name {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.total {
+  margin-top: 5px;
+  font-size: 29px;
+  font-weight: 900;
+}
+
+.total span {
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.good {
+  margin-top: 10px;
+  padding: 9px;
+  border-radius: 12px;
+  background: #ecfdf3;
+  color: var(--green);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.warning {
+  margin-top: 10px;
+  padding: 9px;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.note {
+  margin-top: 12px;
+  color: var(--sub);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.price-alert {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1.5px solid #dc2626;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 750;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.plan-select-btn {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.plan-select-btn.chosen {
+  background: var(--black);
+  color: #fff;
+}
+
+.hidden {
+  display: none;
+}
+
+/* MOBILE */
+
+@media (max-width: 560px) {
+
+  .choice-grid.three {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .input-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+
+  .data-input {
+    font-size: 18px !important;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header class="header">
+
+  <div class="logo">
+    料金プラン相談Bot
+  </div>
+
+  <div class="subtitle">
+    通信料金・割引・端末代までまとめて比較
+  </div>
+
+  <div class="progress">
+    <div
+      class="progress-bar"
+      id="progressBar"
+    ></div>
+  </div>
+
+</header>
+
+<main id="app"></main>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   料金プラン
+========================================================= */
+
+const PLANS = [
+
+  {
+    carrier: "docomo",
+    name: "ドコモ MAX",
+    limits: [1,3,Infinity],
+    prices: [5698,6798,8448],
+    cardType: "docomo",
+    cardDiscount: 220,
+    cardGoldDiscount: 550,
+    homeDiscount: 1210,
+    familyDiscount: [0,550,1210],
+    denkiDiscount: 110,
+    longTermDiscount: { "10": 110, "20": 220 }
+  },
+
+  {
+    carrier: "docomo",
+    name: "ドコモ mini",
+    limits: [6,12],
+    prices: [2750,3850],
+    cardType: "docomo",
+    cardDiscount: 220,
+    cardGoldDiscount: 550,
+    homeDiscount: 1210,
+    denkiDiscount: 110
+  },
+
+  {
+    carrier: "docomo",
+    name: "ahamo",
+    limits: [40],
+    prices: [2970]
+  },
+
+  {
+    carrier: "docomo",
+    name: "ahamo 大盛り",
+    limits: [120],
+    prices: [4950]
+  },
+
+  {
+    carrier: "au",
+    name: "au バリューリンクプラン",
+    limits: [1,Infinity],
+    prices: [6358,8008],
+    cardType: "au",
+    cardDiscount: 220,
+    homeDiscount: 1100,
+    familyDiscount: [0,660,1210]
+  },
+
+  {
+    carrier: "au",
+    name: "au バリューリンクプラン（60歳以上限定）",
+    limits: [5],
+    prices: [4048],
+    cardType: "au",
+    cardDiscount: 220,
+    homeDiscount: 1100,
+    seniorOnly: true
+  },
+
+  {
+    carrier: "au",
+    name: "スマホミニプラン＋",
+    limits: [1,3,5],
+    prices: [4928,6578,8228],
+    cardType: "au",
+    cardDiscount: 220,
+    homeDiscount: 1100,
+    familyDiscount: [0,660,1210]
+  },
+
+  {
+    carrier: "UQ mobile",
+    name: "トクトクプラン2",
+    limits: [5,30],
+    prices: [2948,4048],
+    cardType: "au",
+    cardDiscount: 220,
+    homeDiscount: 1100,
+    familyDiscount: [0,550,550]
+  },
+
+  {
+    carrier: "UQ mobile",
+    name: "コミコミプランバリュー",
+    limits: [35],
+    prices: [3828],
+    familyDiscount: [0,660,660],
+    shortCallIncluded: true
+  },
+
+  {
+    carrier: "SoftBank",
+    name: "テイガク無制限",
+    limits: [Infinity],
+    prices: [8008],
+    cardType: "paypay",
+    cardDiscount: 330,
+    cardGoldDiscount: 550,
+    homeDiscount: 1100,
+    familyDiscount: [0,660,1210]
+  },
+
+  {
+    carrier: "SoftBank",
+    name: "ミニフィット2",
+    limits: [2,5],
+    prices: [5258,6358],
+    cardType: "paypay",
+    cardDiscount: 330,
+    cardGoldDiscount: 550,
+    homeDiscount: 1100,
+    familyDiscount: [0,220,550]
+  },
+
+  {
+    carrier: "Y!mobile",
+    name: "シンプル3 S",
+    limits: [5],
+    prices: [3278],
+    cardType: "paypay",
+    cardDiscount: 330,
+    cardGoldDiscount: 770,
+    homeDiscount: 1650,
+    familyDiscount: [0,1100,1100],
+    shortCallIncluded: true
+  },
+
+  {
+    carrier: "Y!mobile",
+    name: "シンプル3 M",
+    limits: [30],
+    prices: [4378],
+    cardType: "paypay",
+    cardDiscount: 330,
+    cardGoldDiscount: 770,
+    homeDiscount: 1650,
+    familyDiscount: [0,1100,1100],
+    shortCallIncluded: true
+  },
+
+  {
+    carrier: "Y!mobile",
+    name: "シンプル3 L",
+    limits: [35],
+    prices: [5478],
+    cardType: "paypay",
+    cardDiscount: 330,
+    cardGoldDiscount: 770,
+    homeDiscount: 1650,
+    familyDiscount: [0,1100,1100],
+    shortCallIncluded: true
+  }
+
+];
+
+
+/* =========================================================
+   端末
+========================================================= */
+
+/*
+ * price：端末総額（1万円単位のおおよそ）。
+ * ここを書き換えるだけで金額を更新できる。
+ * 通常分割は price ÷ 48回 で概算。
+ * 分割リセット（MNP）は前半24回が1円のため reset:1 固定。
+ */
+
+const DEVICE_INSTALLMENT_MONTHS = 48;
+
+const DEVICES = {
+
+  "iPhone 17": {
+    price: 130000,
+    reset: 1
+  },
+
+  "iPhone 17e": {
+    price: 100000,
+    reset: 1
+  },
+
+  "iPhone 16": {
+    price: 120000,
+    reset: 1
+  }
+
+};
+
+function getDeviceMonthly(
+  deviceInfo,
+  isReset
+) {
+
+  if (isReset) {
+
+    return deviceInfo.reset;
+
+  }
+
+  return Math.round(
+    deviceInfo.price /
+    DEVICE_INSTALLMENT_MONTHS /
+    100
+  ) * 100;
+
+}
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+const state = {
+
+  step: 0,
+
+  deviceChoice: null,
+
+  selectedPlan: null,
+
+  currentCarrier: null,
+
+  averageGB: null,
+  maxGB: null,
+
+  familyCounts: {
+    docomo: 1,
+    au: 1,
+    softbank: 1
+  },
+
+  currentCards: [],
+  newCards: [],
+
+  homeCarrier: "none",
+  newHome: "no",
+  auGas: "no",
+
+  docomoDenki: "no",
+  docomoYears: "none",
+
+  isSenior: "no",
+
+  device: null,
+
+  usagePriority: null,
+
+  callOption: null
+
+};
+
+
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+function updateProgress() {
+
+  const maxStep = 11;
+
+  const percent =
+    Math.min(
+      100,
+      (state.step / maxStep) * 100
+    );
+
+  document
+    .getElementById("progressBar")
+    .style.width = percent + "%";
+}
+
+
+/* =========================================================
+   CHOICE
+========================================================= */
+
+function makeChoice(
+  title,
+  sub,
+  value,
+  key,
+  selected
+) {
+
+  return `
+    <button
+      type="button"
+      class="choice ${selected ? "selected" : ""}"
+      data-key="${key}"
+      data-value="${value}"
+    >
+
+      <span class="choice-title">
+        ${title}
+      </span>
+
+      ${
+        sub
+        ? `
+          <span class="choice-sub">
+            ${sub}
+          </span>
+        `
+        : ""
+      }
+
+    </button>
+  `;
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+function actions(text = "次へ") {
+
+  return `
+    <div class="actions">
+
+      <button
+        type="button"
+        class="secondary"
+        id="backButton"
+      >
+        戻る
+      </button>
+
+      <button
+        type="button"
+        class="primary"
+        id="nextButton"
+      >
+        ${text}
+      </button>
+
+    </div>
+  `;
+}
+
+
+/* =========================================================
+   PLAN RESULT CARD
+   Step9で使う、選択ボタン付きのプラン結果カード。
+========================================================= */
+
+function planResultCard(
+  plan,
+  rank
+) {
+
+  const isSelected =
+    state.selectedPlan &&
+    state.selectedPlan.carrier === plan.carrier &&
+    state.selectedPlan.name === plan.name &&
+    state.selectedPlan.scenario === plan.scenario;
+
+  return `
+
+    <div class="result">
+
+      ${
+        rank
+        ? `<div class="rank">${rank}位</div>`
+        : ""
+      }
+
+      <div class="plan-name">
+        ${plan.carrier} ${plan.name}
+      </div>
+
+      <div class="total">
+        ${money(plan.total)}
+        <span>/月・概算</span>
+      </div>
+
+
+      <div class="detail">
+        <span>通信料金</span>
+        <b>${money(plan.communication)}/月</b>
+      </div>
+
+
+      ${
+        plan.scenario !== "sim"
+        ? `
+          <div class="detail">
+
+            <span>
+              端末代
+              ${
+                plan.scenario === "mnp"
+                ? "（分割リセット）"
+                : "（通常分割）"
+              }
+            </span>
+
+            <b>約${money(plan.device)}/月</b>
+
+          </div>
+        `
+        : ""
+      }
+
+
+      <div class="detail">
+        <span>データ上限</span>
+        <b>
+          ${
+            plan.limit === Infinity
+            ? "無制限"
+            : plan.limit + "GB"
+          }
+        </b>
+      </div>
+
+
+      <div class="tags">
+
+        ${
+          plan.discountLabels.length
+          ? plan.discountLabels.map(
+              label =>
+              `<span class="tag">${label}</span>`
+            ).join("")
+          : `<span class="tag">追加割引なし</span>`
+        }
+
+      </div>
+
+
+      ${
+        plan.limit !== Infinity &&
+        plan.limit < state.maxGB
+        ? `
+          <div class="warning">
+            MAX使用量 ${state.maxGB}GB に対して、
+            プラン上限は ${plan.limit}GBです。<br>
+            MAX月には不足する可能性があります。
+          </div>
+        `
+        : `
+          <div class="good">
+            ${
+              plan.limit === Infinity
+              ? "無制限なのでMAX使用量までカバーできます。"
+              : `最大 ${state.maxGB}GBまでカバーできます。`
+            }
+          </div>
+        `
+      }
+
+
+      <button
+        type="button"
+        class="secondary plan-select-btn ${isSelected ? "chosen" : ""}"
+        data-scenario="${plan.scenario}"
+        data-carrier="${plan.carrier}"
+        data-name="${plan.name}"
+      >
+        ${isSelected ? "✓ この内容に決定" : "この内容に決定"}
+      </button>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function render() {
+
+  const app =
+    document.getElementById("app");
+
+  let html = "";
+
+
+  /* =========================
+     STEP 0
+  ========================= */
+
+  if (state.step === 0) {
+
+    html = `
+
+      <section class="card">
+
+        <h1>
+          料金プランを<br>
+          かんたん診断
+        </h1>
+
+        <p class="description">
+          通信料金だけではなく、
+          割引・端末代まで含めて比較します。
+        </p>
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "SIMのみ乗り換え",
+            "今の端末をそのまま使う",
+            "sim",
+            "deviceChoice",
+            state.deviceChoice === "sim"
+          )}
+
+          ${makeChoice(
+            "端末を変えたい",
+            "新しい端末に買い替える",
+            "device",
+            "deviceChoice",
+            state.deviceChoice === "device"
+          )}
+
+        </div>
+
+        ${actions()}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 1
+  ========================= */
+
+  if (state.step === 1) {
+
+    const carriers = [
+      "docomo",
+      "au",
+      "SoftBank",
+      "ahamo",
+      "UQ mobile",
+      "Y!mobile",
+      "その他"
+    ];
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          現在のキャリア
+        </h2>
+
+        <p class="description">
+          現在契約しているキャリアを選択してください。
+        </p>
+
+        <div class="choice-grid">
+
+          ${carriers.map(c =>
+            makeChoice(
+              c,
+              "",
+              c,
+              "currentCarrier",
+              state.currentCarrier === c
+            )
+          ).join("")}
+
+        </div>
+
+        ${actions()}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 2
+     ★ここが今回の修正版
+  ========================= */
+
+  if (state.step === 2) {
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          月のデータ使用量
+        </h2>
+
+        <p class="description">
+          「平均」と「一番多かった月」の両方を入力してください。
+          後で候補を絞ったあとに、平均重視かMAX重視かを選びます。
+        </p>
+
+        <div class="input-row">
+
+          <div class="input-box">
+
+            <label
+              class="label"
+              for="averageInput"
+            >
+              平均使用量
+            </label>
+
+            <input
+              id="averageInput"
+              class="data-input"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="例：18"
+              value="${state.averageGB ?? ""}"
+            >
+
+            <div class="unit">
+              GB / 月
+            </div>
+
+          </div>
+
+
+          <div class="input-box">
+
+            <label
+              class="label"
+              for="maxInput"
+            >
+              MAX使用量
+            </label>
+
+            <input
+              id="maxInput"
+              class="data-input"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              placeholder="例：28"
+              value="${state.maxGB ?? ""}"
+            >
+
+            <div class="unit">
+              GB / 月
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="note">
+          ※MAXは平均以上の数字を入力してください。
+        </div>
+
+        ${actions()}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 3
+  ========================= */
+
+  if (state.step === 3) {
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          家族割の人数
+        </h2>
+
+        <p class="description">
+          自分を含めて、それぞれのキャリアグループに
+          何回線あるかを入力してください。<br>
+          MNPで乗り換えた場合の家族割の判定にも使います。
+        </p>
+
+
+        <div class="input-box">
+
+          <label
+            class="label"
+            for="familyDocomoInput"
+          >
+            ドコモ（ahamo含む）
+          </label>
+
+          <input
+            id="familyDocomoInput"
+            class="data-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="例：1"
+            value="${state.familyCounts.docomo}"
+          >
+
+          <div class="unit">回線</div>
+
+        </div>
+
+
+        <div class="input-box">
+
+          <label
+            class="label"
+            for="familyAuInput"
+          >
+            au（UQ mobile含む）
+          </label>
+
+          <input
+            id="familyAuInput"
+            class="data-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="例：1"
+            value="${state.familyCounts.au}"
+          >
+
+          <div class="unit">回線</div>
+
+        </div>
+
+
+        <div class="input-box">
+
+          <label
+            class="label"
+            for="familySoftbankInput"
+          >
+            SoftBank（Y!mobile含む）
+          </label>
+
+          <input
+            id="familySoftbankInput"
+            class="data-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="例：1"
+            value="${state.familyCounts.softbank}"
+          >
+
+          <div class="unit">回線</div>
+
+        </div>
+
+
+        <div class="note">
+          ※乗り換え先の候補には、
+          乗り換え後の回線数（＋1）で入力してください。
+        </div>
+
+
+        <label class="label">
+          60歳以上限定プランの対象ですか？
+        </label>
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "対象（60歳以上）",
+            "au等の年齢限定プランも候補に含めます",
+            "yes",
+            "isSenior",
+            state.isSenior === "yes"
+          )}
+
+          ${makeChoice(
+            "対象外",
+            "",
+            "no",
+            "isSenior",
+            state.isSenior === "no"
+          )}
+
+        </div>
+
+        ${actions()}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 4
+  ========================= */
+
+  if (state.step === 4) {
+
+    const cards = [
+
+      ["d", "dカード", "年会費：無料"],
+
+      ["dgold", "dカード GOLD", "年会費：11,000円"],
+
+      ["au", "au PAY カード", "年会費：無料"],
+
+      ["augold", "au PAY ゴールドカード", "年会費：11,000円"],
+
+      ["paypay", "PayPayカード", "年会費：無料"],
+
+      ["paypaygold", "PayPayカード ゴールド", "年会費：11,000円"]
+
+    ];
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          お使いのカードはありますか？
+        </h2>
+
+        <p class="description">
+          持っているカードをすべて選択してください。
+        </p>
+
+        <div class="choice-grid">
+
+          ${cards.map(c =>
+            makeChoice(
+              c[1],
+              c[2],
+              c[0],
+              "currentCards",
+              state.currentCards.includes(c[0])
+            )
+          ).join("")}
+
+        </div>
+
+        <div class="note">
+          複数選択できます。
+        </div>
+
+        ${actions()}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 5
+  ========================= */
+
+  if (state.step === 5) {
+
+    const cards = [
+
+      ["d", "dカード", "年会費：無料"],
+
+      ["dgold", "dカード GOLD", "年会費：11,000円"],
+
+      ["au", "au PAY カード", "年会費：無料"],
+
+      ["augold", "au PAY ゴールドカード", "年会費：11,000円"],
+
+      ["paypay", "PayPayカード", "年会費：無料"],
+
+      ["paypaygold", "PayPayカード ゴールド", "年会費：11,000円"]
+
+    ].filter(c => {
+
+      if (state.currentCards.includes(c[0])) {
+        return false;
+      }
+
+      /*
+       * GOLDを既に持っている場合、
+       * 同ブランドのノーマルは選択肢から外す
+       */
+
+      const goldPairs = {
+        d: "dgold",
+        au: "augold",
+        paypay: "paypaygold"
+      };
+
+      const goldId = goldPairs[c[0]];
+
+      if (
+        goldId &&
+        state.currentCards.includes(goldId)
+      ) {
+        return false;
+      }
+
+      return true;
+
+    });
+
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          割引が使える場合、
+          カードを新規発行しますか？
+        </h2>
+
+        <p class="description">
+          まだプランは決めません。<br>
+          候補プランで割引が使える場合に、
+          新規発行する意思があるか確認します。
+        </p>
+
+        ${
+          cards.length
+          ? `
+            <div class="choice-grid">
+
+              ${cards.map(c =>
+                makeChoice(
+                  c[1],
+                  c[2],
+                  c[0],
+                  "newCards",
+                  state.newCards.includes(c[0])
+                )
+              ).join("")}
+
+            </div>
+          `
+          : ""
+        }
+
+
+        <br>
+
+        ${makeChoice(
+          "新規発行しない",
+          "現在のカード・契約のまま",
+          "none",
+          "newCards",
+          state.newCards.includes("none")
+        )}
+
+
+        <div class="note">
+          ※カードの新規発行は店舗で案内可能です。
+        </div>
+
+        ${actions()}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 6
+  ========================= */
+
+  if (state.step === 6) {
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          光回線・ガス
+        </h2>
+
+        <p class="description">
+          現在契約している光回線を確認したあと、
+          割引が使える場合に変更・新規契約する意思を確認します。
+        </p>
+
+
+        <label class="label">
+          現在契約中の光回線
+        </label>
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "ドコモ光",
+            "",
+            "docomo",
+            "homeCarrier",
+            state.homeCarrier === "docomo"
+          )}
+
+          ${makeChoice(
+            "auひかり等（au系）",
+            "",
+            "au",
+            "homeCarrier",
+            state.homeCarrier === "au"
+          )}
+
+          ${makeChoice(
+            "SoftBank光・NURO光等",
+            "おうち割光セット対象",
+            "softbank",
+            "homeCarrier",
+            state.homeCarrier === "softbank"
+          )}
+
+          ${makeChoice(
+            "その他・なし・わからない",
+            "",
+            "none",
+            "homeCarrier",
+            state.homeCarrier === "none"
+          )}
+
+        </div>
+
+
+        <label class="label">
+          割引が適用できる場合、
+          光回線を変更・新規開通しますか？
+        </label>
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "検討する",
+            "新規開通・事業者変更・転用など",
+            "yes",
+            "newHome",
+            state.newHome === "yes"
+          )}
+
+          ${makeChoice(
+            "変更しない",
+            "現在の契約を維持",
+            "no",
+            "newHome",
+            state.newHome === "no"
+          )}
+
+        </div>
+
+
+        <label class="label">
+          auガス
+        </label>
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "利用中",
+            "auスマートバリューの判定に使用",
+            "yes",
+            "auGas",
+            state.auGas === "yes"
+          )}
+
+          ${makeChoice(
+            "利用していない",
+            "",
+            "no",
+            "auGas",
+            state.auGas === "no"
+          )}
+
+        </div>
+
+
+        <label class="label">
+          ドコモでんき
+        </label>
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "利用中",
+            "ドコモでんきセット割の判定に使用",
+            "yes",
+            "docomoDenki",
+            state.docomoDenki === "yes"
+          )}
+
+          ${makeChoice(
+            "利用していない",
+            "",
+            "no",
+            "docomoDenki",
+            state.docomoDenki === "no"
+          )}
+
+        </div>
+
+
+        <label class="label">
+          同一電話番号でのご利用期間（ドコモ）
+        </label>
+
+        <div class="choice-grid three">
+
+          ${makeChoice(
+            "10年未満",
+            "",
+            "none",
+            "docomoYears",
+            state.docomoYears === "none"
+          )}
+
+          ${makeChoice(
+            "10年以上",
+            "▲110円",
+            "10",
+            "docomoYears",
+            state.docomoYears === "10"
+          )}
+
+          ${makeChoice(
+            "20年以上",
+            "▲220円",
+            "20",
+            "docomoYears",
+            state.docomoYears === "20"
+          )}
+
+        </div>
+
+        ${actions()}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 7
+  ========================= */
+
+  if (state.step === 7) {
+
+    if (state.deviceChoice === "sim") {
+
+      html = `
+
+        <section class="card">
+
+          <h2>
+            端末
+          </h2>
+
+          <p class="description">
+            SIMのみの乗り換えなので、
+            端末代は比較に含めません。
+          </p>
+
+          <div class="tags">
+            <span class="tag">
+              現在の端末を継続利用
+            </span>
+          </div>
+
+          ${actions("候補を絞る")}
+
+        </section>
+
+      `;
+
+    } else {
+
+      html = `
+
+        <section class="card">
+
+          <h2>
+            端末も月額比較に入れます
+          </h2>
+
+          <p class="description">
+            通信料金だけでなく、
+            端末代を含めた月額で比較します。
+          </p>
+
+
+          <label class="label">
+            希望端末
+          </label>
+
+          <div class="choice-grid">
+
+            ${Object.keys(DEVICES).map(device => {
+
+              return makeChoice(
+                device,
+                device === "iPhone 17"
+                  ? "YM・UQへMNPする場合は利用不可"
+                  : "",
+                device,
+                "device",
+                state.device === device
+              );
+
+            }).join("")}
+
+          </div>
+
+
+          <div class="note">
+
+            MNP（乗り換え）と機種変更（今のキャリアのまま）、
+            どちらがお得かはこの後の画面で
+            金額を並べて比較できます。<br><br>
+
+            MNP：分割リセット（前半24回が実質1円/月、返却で残額免除）<br>
+            機種変更：通常分割（端末代を月々に加算）<br><br>
+
+            ※端末価格・施策は時期によって変動するため、
+            ここでは概算で比較します。
+
+          </div>
+
+          ${actions()}
+
+        </section>
+
+      `;
+    }
+  }
+
+
+  /* =========================
+     STEP 8
+  ========================= */
+
+  if (state.step === 8) {
+
+    const candidates =
+      getCandidates();
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          データ量の優先度
+        </h2>
+
+        <p class="description">
+          ここまでの条件で候補を絞りました。<br>
+          平均を基準に料金を抑えるか、
+          MAXまで使えることを優先するか選択してください。
+        </p>
+
+
+        <div class="tags">
+
+          <span class="tag">
+            平均 ${state.averageGB}GB
+          </span>
+
+          <span class="tag">
+            MAX ${state.maxGB}GB
+          </span>
+
+        </div>
+
+
+        ${candidates.slice(0,4).map(plan => `
+
+          <div class="result">
+
+            <div class="plan-name">
+
+              ${
+                state.deviceChoice === "device"
+                ? `<span class="tag">${
+                    plan.scenario === "mnp"
+                    ? "MNP"
+                    : "機種変更"
+                  }</span> `
+                : ""
+              }
+
+              ${plan.carrier} ${plan.name}
+
+            </div>
+
+            <div class="detail">
+
+              <span>
+                実際のデータ上限
+              </span>
+
+              <b>
+                ${
+                  plan.limit === Infinity
+                  ? "無制限"
+                  : plan.limit + "GB"
+                }
+              </b>
+
+            </div>
+
+            <div class="detail">
+
+              <span>
+                通信＋端末概算
+              </span>
+
+              <b>
+                ${money(plan.total)}/月
+              </b>
+
+            </div>
+
+          </div>
+
+        `).join("")}
+
+
+        <br>
+
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "平均を優先",
+            "毎月の料金をできるだけ抑える",
+            "average",
+            "usagePriority",
+            state.usagePriority === "average"
+          )}
+
+          ${makeChoice(
+            "MAXを優先",
+            "最大使用量まで使えることを重視",
+            "max",
+            "usagePriority",
+            state.usagePriority === "max"
+          )}
+
+        </div>
+
+        ${actions("最終候補を見る")}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 9
+  ========================= */
+
+  if (state.step === 9) {
+
+    const usageTags = `
+      <div class="tags">
+
+        <span class="tag">
+          平均 ${state.averageGB}GB
+        </span>
+
+        <span class="tag">
+          MAX ${state.maxGB}GB
+        </span>
+
+        <span class="tag">
+          ${
+            state.usagePriority === "max"
+            ? "MAX重視"
+            : "平均重視"
+          }
+        </span>
+
+      </div>
+    `;
+
+
+    if (state.deviceChoice === "sim") {
+
+      const candidates =
+        calculatePlans("sim");
+
+      html = `
+
+        <section class="card">
+
+          <h2>
+            おすすめプラン TOP 3
+          </h2>
+
+          <p class="description">
+            通信料金の概算です。
+            気になるプランを選んでください。
+          </p>
+
+          ${usageTags}
+
+          ${candidates.slice(0,3).map(
+            (plan,index) =>
+            planResultCard(plan, index + 1)
+          ).join("")}
+
+
+          <div class="price-alert">
+            ⚠ この金額はあくまで概算です。<br>
+            料金改定等により変動します。<br>
+            最終的な金額は、必ずこの後スタッフと一緒にご確認ください。
+          </div>
+
+          ${actions("通話オプションを選ぶ")}
+
+        </section>
+
+      `;
+
+    } else {
+
+      const mnpCandidates =
+        calculatePlans("mnp").slice(0,2);
+
+      const changeCandidates =
+        calculatePlans("change").slice(0,2);
+
+      html = `
+
+        <section class="card">
+
+          <h2>
+            MNPと機種変更を比較
+          </h2>
+
+          <p class="description">
+            通信料金＋端末代の概算です。<br>
+            金額を見比べて、お客様と一緒にどちらにするか選んでください。
+          </p>
+
+          ${usageTags}
+
+
+          <h2>MNP（乗り換え）の場合</h2>
+
+          ${
+            mnpCandidates.length
+            ? mnpCandidates.map(
+                plan => planResultCard(plan, null)
+              ).join("")
+            : `<p class="description">条件に合う候補がありません。</p>`
+          }
+
+
+          <h2>機種変更（今のキャリアのまま）の場合</h2>
+
+          ${
+            changeCandidates.length
+            ? changeCandidates.map(
+                plan => planResultCard(plan, null)
+              ).join("")
+            : `<p class="description">条件に合う候補がありません。</p>`
+          }
+
+
+          <div class="price-alert">
+            ⚠ この金額はあくまで概算です。<br>
+            端末価格・頭金・施策ポイント・料金改定により変動します。<br>
+            最終的な金額は、必ずこの後スタッフと一緒にご確認ください。
+          </div>
+
+          ${actions("通話オプションを選ぶ")}
+
+        </section>
+
+      `;
+
+    }
+  }
+
+
+  /* =========================
+     STEP 10
+  ========================= */
+
+  if (state.step === 10) {
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          最後に通話オプション
+        </h2>
+
+        <p class="description">
+
+          LINE電話などのアプリ通話は
+          通話オプションには含まれません。<br><br>
+
+          「電話番号に電話をかける」
+          通常の国内通話が対象です。<br><br>
+
+          オプションに入らない場合は
+          <b>30秒22円</b>です。
+
+        </p>
+
+
+        <div class="choice-grid">
+
+          ${makeChoice(
+            "オプションなし",
+            "30秒22円",
+            "none",
+            "callOption",
+            state.callOption === "none"
+          )}
+
+          ${makeChoice(
+            "5分以内かけ放題",
+            "1回あたり5分以内の国内通話",
+            "short",
+            "callOption",
+            state.callOption === "short"
+          )}
+
+          ${makeChoice(
+            "24時間かけ放題",
+            "国内通話を時間を気にせず利用",
+            "all",
+            "callOption",
+            state.callOption === "all"
+          )}
+
+        </div>
+
+
+        <div class="note">
+
+          ※プランによって利用できる通話オプション・
+          料金が異なります。最終料金はスタッフ確認。
+
+        </div>
+
+        ${actions("診断を完了")}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 11
+  ========================= */
+
+  if (state.step === 11) {
+
+    const best =
+      state.selectedPlan;
+
+    const callText = {
+
+      none: "通話オプションなし",
+
+      short: "5分以内かけ放題",
+
+      all: "24時間かけ放題"
+
+    }[state.callOption];
+
+
+    html = `
+
+      <section class="card">
+
+        <h1>
+          診断完了
+        </h1>
+
+        <p class="description">
+          スタッフにこの画面を見せて、
+          最終料金を確認してください。
+        </p>
+
+
+        <div class="result">
+
+          <div class="rank">
+
+            ${
+              best.scenario === "mnp"
+              ? "MNP（乗り換え）"
+              : best.scenario === "change"
+                ? "機種変更"
+                : "ご案内内容"
+            }
+
+          </div>
+
+          <div class="plan-name">
+            ${best.carrier} ${best.name}
+          </div>
+
+          <div class="total">
+            ${money(best.total)}
+            <span>/月・概算</span>
+          </div>
+
+
+          ${
+            best.scenario !== "sim"
+            ? `
+              <div class="detail">
+
+                <span>
+                  端末代
+                  ${
+                    best.scenario === "mnp"
+                    ? "（分割リセット）"
+                    : "（通常分割）"
+                  }
+                </span>
+
+                <b>約${money(best.device)}/月</b>
+
+              </div>
+            `
+            : ""
+          }
+
+
+          <div class="detail">
+
+            <span>
+              データ上限
+            </span>
+
+            <b>
+              ${
+                best.limit === Infinity
+                ? "無制限"
+                : best.limit + "GB"
+              }
+            </b>
+
+          </div>
+
+
+          <div class="detail">
+
+            <span>
+              通話
+            </span>
+
+            <b>
+              ${callText}
+            </b>
+
+          </div>
+
+
+          <div class="tags">
+
+            ${
+              best.discountLabels.map(
+                label =>
+                `<span class="tag">${label}</span>`
+              ).join("")
+            }
+
+          </div>
+
+        </div>
+
+
+        <div class="price-alert">
+
+          ⚠ この金額はあくまで概算です。<br>
+          端末価格・頭金・施策ポイント・通話オプション料金などにより変動します。<br>
+          最終的な金額は、必ずこの後スタッフと一緒にご確認ください。
+
+        </div>
+
+        <div class="note">
+
+          第2・第3候補は前の画面で確認できます。
+
+        </div>
+
+
+        <div class="actions">
+
+          <button
+            type="button"
+            class="secondary"
+            id="resetButton"
+          >
+            最初から
+          </button>
+
+        </div>
+
+      </section>
+
+    `;
+  }
+
+
+  app.innerHTML = html;
+
+  updateProgress();
+
+  bindEvents();
+
+}
+
+
+/* =========================================================
+   EVENTS
+   ★重要
+   inputイベントではrenderしない
+========================================================= */
+
+function bindEvents() {
+
+
+  /* 選択ボタン */
+
+  document
+    .querySelectorAll(".choice")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        function() {
+
+          const key =
+            this.dataset.key;
+
+          const value =
+            this.dataset.value;
+
+
+          /* 複数選択 */
+
+          if (
+            key === "currentCards" ||
+            key === "newCards"
+          ) {
+
+            if (value === "none") {
+
+              state[key] = ["none"];
+
+            } else {
+
+              state[key] =
+                state[key].filter(
+                  item => item !== "none"
+                );
+
+
+              if (
+                state[key].includes(value)
+              ) {
+
+                state[key] =
+                  state[key].filter(
+                    item => item !== value
+                  );
+
+              } else {
+
+                state[key].push(value);
+
+              }
+
+            }
+
+
+            /*
+             * ★カード選択ではrenderしてOK。
+             * 入力画面ではないため問題なし。
+             */
+
+            render();
+
+            return;
+          }
+
+
+          state[key] = value;
+
+
+          render();
+
+        }
+      );
+
+    });
+
+
+  /* プラン決定ボタン（Step9） */
+
+  document
+    .querySelectorAll(".plan-select-btn")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        function() {
+
+          const scenario =
+            this.dataset.scenario;
+
+          const carrier =
+            this.dataset.carrier;
+
+          const name =
+            this.dataset.name;
+
+          const list =
+            calculatePlans(scenario);
+
+          const found =
+            list.find(
+              p =>
+                p.carrier === carrier &&
+                p.name === name
+            );
+
+          if (found) {
+
+            state.selectedPlan = found;
+
+            render();
+
+          }
+
+        }
+      );
+
+    });
+
+
+  /* 次へ */
+
+  const next =
+    document.getElementById("nextButton");
+
+  if (next) {
+
+    next.addEventListener(
+      "click",
+      nextStep
+    );
+
+  }
+
+
+  /* 戻る */
+
+  const back =
+    document.getElementById("backButton");
+
+  if (back) {
+
+    back.addEventListener(
+      "click",
+      function() {
+
+        /*
+         * STEP2から戻る場合、
+         * 現在入力されている値を保存しておく。
+         */
+
+        saveDataInputs();
+
+        state.step =
+          Math.max(
+            0,
+            state.step - 1
+          );
+
+        /*
+         * Step9より前に戻った場合、
+         * 選択済みプランは条件変更で
+         * ズレる可能性があるためクリアする
+         */
+
+        if (state.step < 9) {
+
+          state.selectedPlan = null;
+
+        }
+
+        render();
+
+      }
+    );
+
+  }
+
+
+  /* 最初から */
+
+  const reset =
+    document.getElementById("resetButton");
+
+  if (reset) {
+
+    reset.addEventListener(
+      "click",
+      function() {
+
+        location.reload();
+
+      }
+    );
+
+  }
+
+
+  /*
+   * 平均使用量・MAX使用量：
+   * 全角数字を半角に自動変換＋
+   * Enterで次の欄にフォーカス移動
+   */
+
+  const averageInputEl =
+    document.getElementById("averageInput");
+
+  const maxInputEl =
+    document.getElementById("maxInput");
+
+  const numericInputIds = [
+    "averageInput",
+    "maxInput",
+    "familyDocomoInput",
+    "familyAuInput",
+    "familySoftbankInput"
+  ];
+
+  numericInputIds
+    .map(id => document.getElementById(id))
+    .forEach(input => {
+
+    if (!input) {
+      return;
+    }
+
+    input.addEventListener(
+      "input",
+      function() {
+
+        const converted =
+          toHalfWidthNumber(this.value);
+
+        if (converted !== this.value) {
+
+          const pos =
+            this.selectionStart;
+
+          this.value = converted;
+
+          if (pos !== null) {
+
+            this.setSelectionRange(
+              pos,
+              pos
+            );
+
+          }
+
+        }
+
+      }
+    );
+
+  });
+
+  if (averageInputEl && maxInputEl) {
+
+    averageInputEl.addEventListener(
+      "keydown",
+      function(e) {
+
+        /*
+         * IME変換中のEnterは
+         * 変換確定に使わせる（フォーカス移動しない）
+         */
+
+        if (
+          e.key === "Enter" &&
+          !e.isComposing &&
+          e.keyCode !== 229
+        ) {
+
+          e.preventDefault();
+
+          maxInputEl.focus();
+
+        }
+
+      }
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   全角数字→半角変換
+========================================================= */
+
+function toHalfWidthNumber(
+  str
+) {
+
+  return str.replace(
+    /[０-９．]/g,
+    ch =>
+      String.fromCharCode(
+        ch.charCodeAt(0) - 0xFEE0
+      )
+  );
+
+}
+
+
+/* =========================================================
+   入力値を保存
+========================================================= */
+
+function saveDataInputs() {
+
+  const averageInput =
+    document.getElementById("averageInput");
+
+  const maxInput =
+    document.getElementById("maxInput");
+
+
+  if (averageInput) {
+
+    const value =
+      averageInput.value.trim();
+
+    state.averageGB =
+      value === ""
+      ? null
+      : Number(value);
+
+  }
+
+
+  if (maxInput) {
+
+    const value =
+      maxInput.value.trim();
+
+    state.maxGB =
+      value === ""
+      ? null
+      : Number(value);
+
+  }
+
+
+  const familyInputs = {
+    docomo: document.getElementById("familyDocomoInput"),
+    au: document.getElementById("familyAuInput"),
+    softbank: document.getElementById("familySoftbankInput")
+  };
+
+  Object.keys(familyInputs).forEach(group => {
+
+    const input = familyInputs[group];
+
+    if (!input) {
+      return;
+    }
+
+    const value =
+      Number(toHalfWidthNumber(input.value.trim()));
+
+    if (Number.isFinite(value) && value >= 1) {
+
+      state.familyCounts[group] =
+        Math.floor(value);
+
+    }
+
+  });
+
+}
+
+
+/* =========================================================
+   NEXT STEP
+========================================================= */
+
+function nextStep() {
+
+
+  /* STEP 0 */
+
+  if (state.step === 0) {
+
+    if (!state.deviceChoice) {
+
+      alert(
+        "相談内容を選択してください。"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  /* STEP 1 */
+
+  if (state.step === 1) {
+
+    if (!state.currentCarrier) {
+
+      alert(
+        "現在のキャリアを選択してください。"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  /* STEP 2
+     ★入力欄から直接読み取る
+  */
+
+  if (state.step === 2) {
+
+    const averageInput =
+      document.getElementById(
+        "averageInput"
+      );
+
+    const maxInput =
+      document.getElementById(
+        "maxInput"
+      );
+
+
+    if (
+      !averageInput ||
+      !maxInput
+    ) {
+
+      alert(
+        "入力欄を読み込めませんでした。"
+      );
+
+      return;
+
+    }
+
+
+    const averageText =
+      toHalfWidthNumber(
+        averageInput.value.trim()
+      );
+
+    const maxText =
+      toHalfWidthNumber(
+        maxInput.value.trim()
+      );
+
+
+    if (
+      averageText === "" ||
+      maxText === ""
+    ) {
+
+      alert(
+        "平均使用量とMAX使用量を入力してください。"
+      );
+
+      return;
+
+    }
+
+
+    const average =
+      Number(averageText);
+
+    const max =
+      Number(maxText);
+
+
+    if (
+      !Number.isFinite(average) ||
+      !Number.isFinite(max) ||
+      average <= 0 ||
+      max <= 0
+    ) {
+
+      alert(
+        "0より大きい数字を入力してください。"
+      );
+
+      return;
+
+    }
+
+
+    if (max < average) {
+
+      alert(
+        "MAX使用量は平均使用量以上にしてください。"
+      );
+
+      return;
+
+    }
+
+
+    state.averageGB =
+      average;
+
+    state.maxGB =
+      max;
+
+  }
+
+
+  /* STEP 3 */
+
+  if (state.step === 3) {
+
+    const groups = [
+      ["docomo", "familyDocomoInput", "ドコモ"],
+      ["au", "familyAuInput", "au"],
+      ["softbank", "familySoftbankInput", "SoftBank"]
+    ];
+
+    for (const [group, id, label] of groups) {
+
+      const input =
+        document.getElementById(id);
+
+      if (!input) {
+        continue;
+      }
+
+      const text =
+        toHalfWidthNumber(
+          input.value.trim()
+        );
+
+      const value =
+        Number(text);
+
+      if (
+        text === "" ||
+        !Number.isFinite(value) ||
+        value < 1
+      ) {
+
+        alert(
+          label + "の回線数を1以上の数字で入力してください。"
+        );
+
+        return;
+
+      }
+
+      state.familyCounts[group] =
+        Math.floor(value);
+
+    }
+
+  }
+
+
+  /* STEP 4 */
+
+  if (state.step === 4) {
+
+    if (!state.currentCards.length) {
+
+      state.currentCards = ["none"];
+
+    }
+
+  }
+
+
+  /* STEP 5 */
+
+  if (state.step === 5) {
+
+    if (!state.newCards.length) {
+
+      state.newCards = ["none"];
+
+    }
+
+  }
+
+
+  /* STEP 7 */
+
+  if (
+    state.step === 7 &&
+    state.deviceChoice !== "sim"
+  ) {
+
+    if (!state.device) {
+
+      alert(
+        "希望端末を選択してください。"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  /* STEP 8 */
+
+  if (state.step === 8) {
+
+    if (!state.usagePriority) {
+
+      alert(
+        "平均重視かMAX重視かを選択してください。"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  /* STEP 9 */
+
+  if (state.step === 9) {
+
+    if (!state.selectedPlan) {
+
+      alert(
+        "ご案内するプランを1つ選んでください。"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  /* STEP 10 */
+
+  if (state.step === 10) {
+
+    if (!state.callOption) {
+
+      alert(
+        "通話オプションを選択してください。"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  state.step++;
+
+  render();
+
+}
+
+
+/* =========================================================
+   PLAN CALCULATION
+========================================================= */
+
+function calculatePlans(
+  scenario
+) {
+
+  /*
+   * STEP8ではまだusagePriorityがない。
+   * その場合は平均を仮基準にする。
+   */
+
+  const usage =
+    state.usagePriority === "max"
+    ? state.maxGB
+    : state.averageGB;
+
+
+  const result = [];
+
+
+  PLANS.forEach(plan => {
+
+
+    /* 機種変更 */
+
+    if (
+      scenario === "change" &&
+      !isSameCarrier(plan.carrier)
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * MNP
+     *
+     * MNP＝キャリアの乗り換え。
+     * 現在と同じキャリアグループの
+     * プランは対象外。
+     */
+
+    if (
+      scenario === "mnp" &&
+      isSameCarrier(plan.carrier)
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * MNP＋端末
+     *
+     * YM / UQへMNPする場合
+     * iPhone17は不可
+     */
+
+    if (
+      scenario === "mnp" &&
+      state.device === "iPhone 17" &&
+      (
+        plan.carrier === "Y!mobile" ||
+        plan.carrier === "UQ mobile"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+     * 60歳以上限定プラン
+     */
+
+    if (
+      plan.seniorOnly &&
+      state.isSenior !== "yes"
+    ) {
+
+      return;
+
+    }
+
+
+    /* データ容量 */
+
+    const index =
+      getPlanIndex(
+        plan,
+        usage
+      );
+
+
+    const limit =
+      plan.limits[index];
+
+
+    /*
+     * 使用量を超えるプランは除外
+     */
+
+    if (
+      limit !== Infinity &&
+      limit < usage
+    ) {
+
+      return;
+
+    }
+
+
+    let communication =
+      plan.prices[index];
+
+
+    let discountLabels = [];
+
+
+    /* カード */
+
+    const cardResult =
+      getCardDiscount(plan);
+
+    communication -=
+      cardResult.amount;
+
+
+    if (cardResult.label) {
+
+      discountLabels.push(
+        cardResult.label
+      );
+
+    }
+
+
+    /* 光・ガス */
+
+    const homeResult =
+      getHomeDiscount(plan);
+
+    communication -=
+      homeResult.amount;
+
+
+    if (homeResult.label) {
+
+      discountLabels.push(
+        homeResult.label
+      );
+
+    }
+
+
+    /* 家族 */
+
+    const familyGroup =
+      carrierGroup(plan.carrier);
+
+    const familyCountForPlan =
+      familyGroup
+      ? (state.familyCounts[familyGroup] || 1)
+      : 1;
+
+    const familyIndex =
+      familyCountForPlan >= 3
+      ? 2
+      : familyCountForPlan === 2
+        ? 1
+        : 0;
+
+
+    const familyDiscount =
+      plan.familyDiscount
+      ? (
+          plan.familyDiscount[
+            familyIndex
+          ] || 0
+        )
+      : 0;
+
+
+    communication -=
+      familyDiscount;
+
+
+    if (familyDiscount > 0) {
+
+      discountLabels.push(
+        "家族割"
+      );
+
+    }
+
+
+    /* ドコモでんきセット割 */
+
+    if (
+      plan.denkiDiscount &&
+      state.docomoDenki === "yes"
+    ) {
+
+      communication -=
+        plan.denkiDiscount;
+
+      discountLabels.push(
+        "ドコモでんきセット割"
+      );
+
+    }
+
+
+    /* 長期利用割（ドコモ） */
+
+    if (
+      plan.longTermDiscount &&
+      state.docomoYears !== "none"
+    ) {
+
+      const longTermAmount =
+        plan.longTermDiscount[
+          state.docomoYears
+        ] || 0;
+
+      if (longTermAmount > 0) {
+
+        communication -=
+          longTermAmount;
+
+        discountLabels.push(
+          state.docomoYears === "20"
+          ? "長期利用割（20年以上）"
+          : "長期利用割（10年以上）"
+        );
+
+      }
+
+    }
+
+
+    communication =
+      Math.max(
+        0,
+        communication
+      );
+
+
+    /* 端末 */
+
+    let device = 0;
+
+
+    if (
+      scenario !== "sim" &&
+      state.device
+    ) {
+
+      const deviceInfo =
+        DEVICES[state.device];
+
+      device =
+        getDeviceMonthly(
+          deviceInfo,
+          scenario === "mnp"
+        );
+
+    }
+
+
+    const total =
+      communication + device;
+
+
+    result.push({
+
+      scenario:
+        scenario,
+
+      carrier:
+        plan.carrier,
+
+      name:
+        plan.name,
+
+      limit:
+        limit,
+
+      communication:
+        communication,
+
+      device:
+        device,
+
+      total:
+        total,
+
+      discountLabels:
+        discountLabels
+
+    });
+
+  });
+
+
+  result.sort(
+    (a,b) =>
+      a.total - b.total
+  );
+
+
+  return result;
+
+}
+
+
+/* =========================================================
+   候補一覧（表示用）
+
+   SIMのみ→そのまま1本
+   端末を変える場合→MNP案／機種変更案の
+   両方をまとめて金額順に並べる。
+   （どちらが得かは最後にまとめて比較して決める）
+========================================================= */
+
+function getCandidates() {
+
+  if (state.deviceChoice === "sim") {
+
+    return calculatePlans("sim");
+
+  }
+
+
+  const mnpList =
+    calculatePlans("mnp");
+
+  const changeList =
+    calculatePlans("change");
+
+  return mnpList
+    .concat(changeList)
+    .sort(
+      (a,b) =>
+        a.total - b.total
+    );
+
+}
+
+
+/* =========================================================
+   CARRIER GROUP
+   docomo/ahamo・au/UQ mobile・SoftBank/Y!mobile
+   をそれぞれ同一グループとして扱う。
+   「その他」やnullは常に別グループ扱い。
+========================================================= */
+
+function carrierGroup(
+  carrier
+) {
+
+  if (
+    carrier === "docomo" ||
+    carrier === "ahamo"
+  ) {
+
+    return "docomo";
+
+  }
+
+
+  if (
+    carrier === "au" ||
+    carrier === "UQ mobile"
+  ) {
+
+    return "au";
+
+  }
+
+
+  if (
+    carrier === "SoftBank" ||
+    carrier === "Y!mobile"
+  ) {
+
+    return "softbank";
+
+  }
+
+
+  return null;
+
+}
+
+
+/* =========================================================
+   SAME CARRIER
+========================================================= */
+
+function isSameCarrier(
+  planCarrier
+) {
+
+  const planGroup =
+    carrierGroup(planCarrier);
+
+  const currentGroup =
+    carrierGroup(state.currentCarrier);
+
+  return (
+    planGroup !== null &&
+    planGroup === currentGroup
+  );
+
+}
+
+
+/* =========================================================
+   DATA INDEX
+========================================================= */
+
+function getPlanIndex(
+  plan,
+  usage
+) {
+
+  for (
+    let i = 0;
+    i < plan.limits.length;
+    i++
+  ) {
+
+    if (
+      usage <= plan.limits[i]
+    ) {
+
+      return i;
+
+    }
+
+  }
+
+
+  return (
+    plan.limits.length - 1
+  );
+
+}
+
+
+/* =========================================================
+   CARD DISCOUNT
+========================================================= */
+
+function getCardDiscount(
+  plan
+) {
+
+  if (!plan.cardType) {
+
+    return {
+      amount: 0,
+      label: null
+    };
+
+  }
+
+
+  const allCards =
+    state.currentCards.concat(
+      state.newCards
+    );
+
+
+  const type =
+    plan.cardType;
+
+
+  const normalId =
+    type === "docomo"
+    ? "d"
+    : type === "au"
+      ? "au"
+      : "paypay";
+
+
+  const goldId =
+    type === "docomo"
+    ? "dgold"
+    : type === "au"
+      ? "augold"
+      : "paypaygold";
+
+
+  const hasGold =
+    allCards.includes(goldId);
+
+
+  const hasNormal =
+    allCards.includes(normalId);
+
+
+  if (
+    !hasGold &&
+    !hasNormal
+  ) {
+
+    return {
+      amount: 0,
+      label: null
+    };
+
+  }
+
+
+  if (
+    type === "paypay" &&
+    plan.carrier === "Y!mobile"
+  ) {
+
+    if (hasGold) {
+
+      return {
+        amount:
+          plan.cardGoldDiscount || 770,
+        label:
+          "PayPayカード ゴールド"
+      };
+
+    }
+
+
+    return {
+      amount:
+        plan.cardDiscount || 330,
+      label:
+        "PayPayカード"
+    };
+
+  }
+
+
+  if (
+    type === "paypay"
+  ) {
+
+    if (hasGold) {
+
+      return {
+        amount:
+          plan.cardGoldDiscount || 550,
+        label:
+          "PayPayカード ゴールド"
+      };
+
+    }
+
+
+    return {
+      amount:
+        plan.cardDiscount || 330,
+      label:
+        "PayPayカード"
+    };
+
+  }
+
+
+  if (
+    type === "docomo"
+  ) {
+
+    if (hasGold) {
+
+      return {
+        amount:
+          plan.cardGoldDiscount || 550,
+        label:
+          "dカード GOLD"
+      };
+
+    }
+
+    return {
+      amount:
+        plan.cardDiscount || 220,
+      label:
+        "dカード"
+    };
+
+  }
+
+
+  if (
+    type === "au"
+  ) {
+
+    return {
+      amount:
+        plan.cardDiscount || 220,
+      label:
+        hasGold
+        ? "au PAY ゴールドカード"
+        : "au PAY カード"
+    };
+
+  }
+
+
+  return {
+    amount: 0,
+    label: null
+  };
+
+}
+
+
+/* =========================================================
+   HOME
+========================================================= */
+
+function getHomeDiscount(
+  plan
+) {
+
+  const group =
+    carrierGroup(plan.carrier);
+
+  if (
+    !group ||
+    !plan.homeDiscount
+  ) {
+
+    return {
+      amount: 0,
+      label: null
+    };
+
+  }
+
+
+  const alreadyHas =
+    state.homeCarrier === group;
+
+  const willingToGet =
+    state.newHome === "yes";
+
+  const auGasOnly =
+    group === "au" &&
+    state.auGas === "yes";
+
+
+  if (
+    !alreadyHas &&
+    !willingToGet &&
+    !auGasOnly
+  ) {
+
+    return {
+      amount: 0,
+      label: null
+    };
+
+  }
+
+
+  const names = {
+    docomo: "ドコモ光セット割",
+    au: "auスマートバリュー",
+    softbank: "おうち割光セット"
+  };
+
+  let label = names[group];
+
+
+  if (
+    group === "au" &&
+    state.auGas === "yes"
+  ) {
+
+    label += "（光・ガス）";
+
+  } else if (!alreadyHas) {
+
+    label += "（新規契約）";
+
+  }
+
+
+  return {
+    amount: plan.homeDiscount,
+    label: label
+  };
+
+}
+
+
+/* =========================================================
+   MONEY
+========================================================= */
+
+function money(
+  number
+) {
+
+  return Math.round(
+    number
+  ).toLocaleString(
+    "ja-JP"
+  ) + "円";
+
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+render();
+
+</script>
+
+</body>
+</html>
