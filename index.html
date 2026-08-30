@@ -1121,86 +1121,72 @@ function render() {
 
         <p class="description">
           自分を含めて、それぞれのキャリアグループに
-          何回線あるかを入力してください。<br>
+          何回線あるかを選択してください。<br>
           MNPで乗り換えた場合の家族割の判定にも使います。
         </p>
 
 
-        <div class="input-box">
+        <label class="label">
+          ドコモ（ahamo含む）
+        </label>
 
-          <label
-            class="label"
-            for="familyDocomoInput"
-          >
-            ドコモ（ahamo含む）
-          </label>
+        <div class="choice-grid">
 
-          <input
-            id="familyDocomoInput"
-            class="data-input"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            placeholder="例：1"
-            value="${state.familyCounts.docomo}"
-          >
-
-          <div class="unit">回線</div>
+          ${["0","1","2","3"].map(n =>
+            makeChoice(
+              n === "3" ? "3以上" : n,
+              "",
+              n,
+              "familyCounts.docomo",
+              state.familyCounts.docomo === Number(n)
+            )
+          ).join("")}
 
         </div>
 
 
-        <div class="input-box">
+        <label class="label">
+          au（UQ mobile含む）
+        </label>
 
-          <label
-            class="label"
-            for="familyAuInput"
-          >
-            au（UQ mobile含む）
-          </label>
+        <div class="choice-grid">
 
-          <input
-            id="familyAuInput"
-            class="data-input"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            placeholder="例：1"
-            value="${state.familyCounts.au}"
-          >
-
-          <div class="unit">回線</div>
+          ${["0","1","2","3"].map(n =>
+            makeChoice(
+              n === "3" ? "3以上" : n,
+              "",
+              n,
+              "familyCounts.au",
+              state.familyCounts.au === Number(n)
+            )
+          ).join("")}
 
         </div>
 
 
-        <div class="input-box">
+        <label class="label">
+          SoftBank（Y!mobile含む）
+        </label>
 
-          <label
-            class="label"
-            for="familySoftbankInput"
-          >
-            SoftBank（Y!mobile含む）
-          </label>
+        <div class="choice-grid">
 
-          <input
-            id="familySoftbankInput"
-            class="data-input"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            placeholder="例：1"
-            value="${state.familyCounts.softbank}"
-          >
-
-          <div class="unit">回線</div>
+          ${["0","1","2","3"].map(n =>
+            makeChoice(
+              n === "3" ? "3以上" : n,
+              "",
+              n,
+              "familyCounts.softbank",
+              state.familyCounts.softbank === Number(n)
+            )
+          ).join("")}
 
         </div>
 
 
         <div class="note">
           ※乗り換え先の候補には、
-          乗り換え後の回線数（＋1）で入力してください。
+          乗り換え後の回線数（＋1）で選んでください。<br>
+          そのキャリアに家族の回線がない場合は「0」のままでOKです。
         </div>
 
 
@@ -2240,7 +2226,21 @@ function bindEvents() {
           }
 
 
-          state[key] = value;
+          /* familyCounts.docomo のような複合キー */
+
+          if (key.indexOf("familyCounts.") === 0) {
+
+            const group =
+              key.split(".")[1];
+
+            state.familyCounts[group] =
+              Number(value);
+
+          } else {
+
+            state[key] = value;
+
+          }
 
 
           render();
@@ -2386,10 +2386,7 @@ function bindEvents() {
 
   const numericInputIds = [
     "averageInput",
-    "maxInput",
-    "familyDocomoInput",
-    "familyAuInput",
-    "familySoftbankInput"
+    "maxInput"
   ];
 
   numericInputIds
@@ -2518,32 +2515,6 @@ function saveDataInputs() {
 
   }
 
-
-  const familyInputs = {
-    docomo: document.getElementById("familyDocomoInput"),
-    au: document.getElementById("familyAuInput"),
-    softbank: document.getElementById("familySoftbankInput")
-  };
-
-  Object.keys(familyInputs).forEach(group => {
-
-    const input = familyInputs[group];
-
-    if (!input) {
-      return;
-    }
-
-    const value =
-      Number(toHalfWidthNumber(input.value.trim()));
-
-    if (Number.isFinite(value) && value >= 1) {
-
-      state.familyCounts[group] =
-        Math.floor(value);
-
-    }
-
-  });
 
 }
 
@@ -2687,54 +2658,6 @@ function nextStep() {
 
   }
 
-
-  /* STEP 3 */
-
-  if (state.step === 3) {
-
-    const groups = [
-      ["docomo", "familyDocomoInput", "ドコモ"],
-      ["au", "familyAuInput", "au"],
-      ["softbank", "familySoftbankInput", "SoftBank"]
-    ];
-
-    for (const [group, id, label] of groups) {
-
-      const input =
-        document.getElementById(id);
-
-      if (!input) {
-        continue;
-      }
-
-      const text =
-        toHalfWidthNumber(
-          input.value.trim()
-        );
-
-      const value =
-        Number(text);
-
-      if (
-        text === "" ||
-        !Number.isFinite(value) ||
-        value < 1
-      ) {
-
-        alert(
-          label + "の回線数を1以上の数字で入力してください。"
-        );
-
-        return;
-
-      }
-
-      state.familyCounts[group] =
-        Math.floor(value);
-
-    }
-
-  }
 
 
   /* STEP 4 */
@@ -3007,8 +2930,9 @@ function calculatePlans(
       carrierGroup(plan.carrier);
 
     const familyCountForPlan =
-      familyGroup
-      ? (state.familyCounts[familyGroup] || 1)
+      familyGroup &&
+      typeof state.familyCounts[familyGroup] === "number"
+      ? state.familyCounts[familyGroup]
       : 1;
 
     const familyIndex =
