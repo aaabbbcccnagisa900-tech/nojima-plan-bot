@@ -883,7 +883,9 @@ const state = {
 
   skipCardHomeSteps: false,
 
-  consultNumber: 1
+  consultNumber: 1,
+
+  familyMemberCarrierGroups: []
 
 };
 
@@ -1585,6 +1587,20 @@ function render() {
 
   if (state.step === 4) {
 
+    const priorFamilyCounts =
+      getPriorFamilyCounts();
+
+    const groupLabel = {
+      docomo: "ドコモ",
+      au: "au",
+      softbank: "SoftBank"
+    };
+
+    const priorNote = group =>
+      priorFamilyCounts[group] > 0
+      ? `<span class="tag">${groupLabel[group]}は家族${priorFamilyCounts[group]}人が決定済み・+1人増えます</span>`
+      : "";
+
     html = `
 
       <section class="card">
@@ -1602,6 +1618,8 @@ function render() {
         <label class="label">
           ドコモ（ahamo含む）
         </label>
+
+        ${priorNote("docomo")}
 
         <div class="choice-grid">
 
@@ -1622,6 +1640,8 @@ function render() {
           au（UQ mobile含む）
         </label>
 
+        ${priorNote("au")}
+
         <div class="choice-grid">
 
           ${["0","1","2","3"].map(n =>
@@ -1640,6 +1660,8 @@ function render() {
         <label class="label">
           SoftBank（Y!mobile含む）
         </label>
+
+        ${priorNote("softbank")}
 
         <div class="choice-grid">
 
@@ -3093,6 +3115,24 @@ function bindEvents() {
             "カード・光回線・でんきの情報を引き継ぎますか？"
           );
 
+        if (state.selectedPlan) {
+
+          const decidedGroup =
+            carrierGroup(state.selectedPlan.carrier);
+
+          if (decidedGroup) {
+
+            state.familyMemberCarrierGroups.push(
+              decidedGroup
+            );
+
+          }
+
+        }
+
+        const priorCounts =
+          getPriorFamilyCounts();
+
         state.consultNumber++;
 
         const kept =
@@ -3128,9 +3168,9 @@ function bindEvents() {
         state.maxGB = null;
 
         state.familyCounts = {
-          docomo: 1,
-          au: 1,
-          softbank: 1
+          docomo: Math.min(priorCounts.docomo + 1, 3),
+          au: Math.min(priorCounts.au + 1, 3),
+          softbank: Math.min(priorCounts.softbank + 1, 3)
         };
 
         state.isSenior = "no";
@@ -3158,7 +3198,12 @@ function bindEvents() {
           state.auHomePhone = kept.auHomePhone;
           state.auDenki = kept.auDenki;
           state.docomoDenki = kept.docomoDenki;
-          state.familyCounts = kept.familyCounts;
+
+          state.familyCounts = {
+            docomo: Math.min(Math.max(kept.familyCounts.docomo, priorCounts.docomo + 1), 3),
+            au: Math.min(Math.max(kept.familyCounts.au, priorCounts.au + 1), 3),
+            softbank: Math.min(Math.max(kept.familyCounts.softbank, priorCounts.softbank + 1), 3)
+          };
 
           state.skipCardHomeSteps = true;
 
@@ -4100,6 +4145,35 @@ function carrierGroup(
 
 
   return null;
+
+}
+
+
+/* =========================================================
+   これまでの家族の決定プラン集計
+
+   家族コンサルで決定済みのプランを
+   キャリアグループごとに集計する
+   （家族割の回線数のデフォルト値に使う）
+========================================================= */
+
+function getPriorFamilyCounts() {
+
+  const counts = {
+    docomo: 0,
+    au: 0,
+    softbank: 0
+  };
+
+  state.familyMemberCarrierGroups.forEach(group => {
+
+    if (counts[group] !== undefined) {
+      counts[group]++;
+    }
+
+  });
+
+  return counts;
 
 }
 
