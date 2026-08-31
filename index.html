@@ -71,7 +71,7 @@ button {
 }
 
 .mascot-banner {
-  text-align: center;
+  text-align: right;
   padding: 14px 15px 0;
 }
 
@@ -353,6 +353,12 @@ h2 {
   color: var(--sub);
   font-size: 10px;
   line-height: 1.7;
+}
+
+.customer-info {
+  margin-top: 14px;
+  color: var(--sub);
+  font-size: 11px;
 }
 
 .price-alert {
@@ -807,6 +813,9 @@ const state = {
 
   step: 0,
 
+  customerName: "",
+  customerPhone: "",
+
   deviceChoice: null,
 
   selectedPlan: null,
@@ -856,7 +865,7 @@ const state = {
 
 function updateProgress() {
 
-  const maxStep = 11;
+  const maxStep = 12;
 
   const percent =
     Math.min(
@@ -967,20 +976,29 @@ function planResultCard(
         : ""
       }
 
+      ${
+        (plan.scenario === "mnp" || plan.scenario === "change" || plan.device)
+        ? `
+          <div class="tags">
+            ${
+              plan.scenario === "mnp" || plan.scenario === "change"
+              ? `<span class="tag">${
+                  plan.scenario === "mnp" ? "MNP" : "機種変更"
+                }</span>`
+              : ""
+            }
+            ${
+              plan.device
+              ? `<span class="tag">${plan.device}</span>`
+              : ""
+            }
+          </div>
+        `
+        : ""
+      }
+
       <div class="plan-name">
-        ${
-          plan.scenario === "mnp" || plan.scenario === "change"
-          ? `<span class="tag">${
-              plan.scenario === "mnp" ? "MNP" : "機種変更"
-            }</span> `
-          : ""
-        }
         ${plan.carrier} ${plan.name}
-        ${
-          plan.device
-          ? `<span class="tag">${plan.device}</span>`
-          : ""
-        }
       </div>
 
       <div class="total">
@@ -1042,6 +1060,20 @@ function planResultCard(
 
       </div>
 
+      ${
+        (
+          (state.newCards.length && !state.newCards.includes("none")) ||
+          state.newHome === "yes"
+        )
+        ? `
+          <div class="note">
+            ※新規発行・新規契約が必要な割引が含まれています。
+            別途お手続きが必要です。
+          </div>
+        `
+        : ""
+      }
+
 
       ${
         plan.limit !== Infinity &&
@@ -1076,7 +1108,7 @@ function planResultCard(
             data-name="${plan.name}"
             data-device="${plan.device || ""}"
           >
-            ${isSelected ? "✓ この内容に決定" : "この内容に決定"}
+            ${isSelected ? " この内容に決定" : "この内容に決定"}
           </button>
         `
         : ""
@@ -1112,13 +1144,89 @@ function render() {
       <section class="card">
 
         <h1>
-          ぴったりの料金プラン、<br>
-          まさやが診断します！
+          お客様情報
         </h1>
 
         <p class="description">
-          いくつか質問に答えるだけ。<br>
-          月々の料金・割引・端末代まで、まとめて比較します🎉
+          差し支えなければ、お名前とお電話番号をご入力ください<br>
+          未入力のまま診断を進めることも可能です
+        </p>
+
+        <label
+          class="label"
+          for="customerNameInput"
+        >
+          お名前
+        </label>
+
+        <input
+          id="customerNameInput"
+          class="data-input"
+          type="text"
+          autocomplete="off"
+          placeholder="例：野島 太郎"
+          value="${state.customerName}"
+        >
+
+        <label
+          class="label"
+          for="customerPhoneInput"
+        >
+          お電話番号
+        </label>
+
+        <input
+          id="customerPhoneInput"
+          class="data-input"
+          type="text"
+          inputmode="tel"
+          autocomplete="off"
+          placeholder="例：090-1234-5678"
+          value="${state.customerPhone}"
+        >
+
+        <div class="actions">
+
+          <button
+            type="button"
+            class="secondary"
+            id="skipButton"
+          >
+            入力せずに進む
+          </button>
+
+          <button
+            type="button"
+            class="primary"
+            id="nextButton"
+          >
+            次へ
+          </button>
+
+        </div>
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 1
+  ========================= */
+
+  if (state.step === 1) {
+
+    html = `
+
+      <section class="card">
+
+        <h1>
+          料金プラン診断
+        </h1>
+
+        <p class="description">
+          通信料金・割引・端末代までまとめて比較いたします
         </p>
 
         <div class="choice-grid">
@@ -1150,10 +1258,10 @@ function render() {
 
 
   /* =========================
-     STEP 1
+     STEP 2
   ========================= */
 
-  if (state.step === 1) {
+  if (state.step === 2) {
 
     const carriers = [
       "docomo",
@@ -1170,11 +1278,11 @@ function render() {
       <section class="card">
 
         <h2>
-          今お使いのケータイ会社は？
+          現在のご契約キャリア
         </h2>
 
         <p class="description">
-          今契約している携帯会社を選んでください。
+          現在ご契約中のキャリアをお選びください
         </p>
 
         <div class="choice-grid">
@@ -1200,23 +1308,23 @@ function render() {
 
 
   /* =========================
-     STEP 2
-     ★ここが今回の修正版
+     STEP 3
+     ここが今回の修正版
   ========================= */
 
-  if (state.step === 2) {
+  if (state.step === 3) {
 
     html = `
 
       <section class="card">
 
         <h2>
-          毎月どれくらいデータ使ってる？
+          月間データ利用量
         </h2>
 
         <p class="description">
-          「だいたい平均」と「一番使った月」の両方を教えてください。<br>
-          あとで料金重視か、たっぷり使える方を重視するか選べます。
+          平均的な月と、最も多くご利用された月の使用量をご入力ください<br>
+          後ほど、料金重視・データ量重視のどちらかをお選びいただけます
         </p>
 
         <div class="input-row">
@@ -1288,22 +1396,22 @@ function render() {
 
 
   /* =========================
-     STEP 3
+     STEP 4
   ========================= */
 
-  if (state.step === 3) {
+  if (state.step === 4) {
 
     html = `
 
       <section class="card">
 
         <h2>
-          家族割、使える人数は？
+          家族割の回線数
         </h2>
 
         <p class="description">
-          あなたを含めて、家族が何回線持っているか教えてください。<br>
-          乗り換え後の家族割もこれで判定します。
+          ご本人を含め、家族の回線数をお選びください<br>
+          乗り換え後の家族割の判定にも使用いたします
         </p>
 
 
@@ -1372,13 +1480,13 @@ function render() {
 
 
         <label class="label">
-          60歳以上の方向けプランも見てみる？
+          60歳以上限定プランの確認
         </label>
 
         <div class="choice-grid">
 
           ${makeChoice(
-            "見てみる（60歳以上）",
+            "対象（60歳以上）",
             "au等の年齢限定プランも候補に含めます",
             "yes",
             "isSenior",
@@ -1404,10 +1512,10 @@ function render() {
 
 
   /* =========================
-     STEP 4
+     STEP 5
   ========================= */
 
-  if (state.step === 4) {
+  if (state.step === 5) {
 
     const cards = [
 
@@ -1430,12 +1538,12 @@ function render() {
       <section class="card">
 
         <h2>
-          お持ちのクレジットカードは？
+          ご利用中のクレジットカード
         </h2>
 
         <p class="description">
-          持っているカードを全部選んでください（複数OK）。<br>
-          カード払いにするとお得になるプランがあります💳
+          お持ちのカードをすべてお選びください（複数選択可）<br>
+          カードのお支払いでお得になるプランがございます
         </p>
 
         <div class="choice-grid">
@@ -1465,10 +1573,10 @@ function render() {
 
 
   /* =========================
-     STEP 5
+     STEP 6
   ========================= */
 
-  if (state.step === 5) {
+  if (state.step === 6) {
 
     const cards = [
 
@@ -1520,13 +1628,13 @@ function render() {
       <section class="card">
 
         <h2>
-          カードを新しく作る予定は？
+          カードの新規発行について
         </h2>
 
         <p class="description">
-          もっとお得になるプランがあれば、
-          カードを新しく作りますか？<br>
-          （ここではまだプランは決まりません）
+          より割引率の高いプランがある場合、
+          カードを新規発行されますか<br>
+          （この時点ではプランは確定いたしません）
         </p>
 
         ${
@@ -1574,22 +1682,22 @@ function render() {
 
 
   /* =========================
-     STEP 6
+     STEP 7
   ========================= */
 
-  if (state.step === 6) {
+  if (state.step === 7) {
 
     html = `
 
       <section class="card">
 
         <h2>
-          おうちのネット・でんきは？
+          ご自宅のネット回線・でんき
         </h2>
 
         <p class="description">
-          おうちのネット回線とセットにすると、
-          スマホ代がさらに安くなることがあります📶
+          ご自宅のネット回線とのセットで、
+          スマホ代がさらにお安くなる場合がございます
         </p>
 
 
@@ -1635,7 +1743,7 @@ function render() {
 
 
         <label class="label">
-          お得になるなら、光回線を新しく契約する？
+          光回線の新規契約について
         </label>
 
         <div class="choice-grid">
@@ -1665,7 +1773,7 @@ function render() {
 
 
         <label class="label">
-          au：固定電話もセットで契約している・する予定ですか？
+          au：固定電話のセット契約について
         </label>
 
         <p class="description">
@@ -1791,10 +1899,10 @@ function render() {
 
 
   /* =========================
-     STEP 7
+     STEP 8
   ========================= */
 
-  if (state.step === 7) {
+  if (state.step === 8) {
 
     if (state.deviceChoice === "sim") {
 
@@ -1803,12 +1911,12 @@ function render() {
         <section class="card">
 
           <h2>
-            今の端末、そのまま使うよ！
+            ご利用端末について
           </h2>
 
           <p class="description">
-            SIMだけの乗り換えなので、
-            端末代はかかりません。
+            SIMのみのお乗り換えのため、
+            端末代はかかりません
           </p>
 
           <div class="tags">
@@ -1830,12 +1938,12 @@ function render() {
         <section class="card">
 
           <h2>
-            気になる新しい端末は？
+            ご希望の端末
           </h2>
 
           <p class="description">
-            通信料金だけでなく、
-            端末代も含めた月額で比較します📱
+            通信料金と端末代を含めた
+            月額でご案内いたします
           </p>
 
 
@@ -1889,10 +1997,10 @@ function render() {
 
 
   /* =========================
-     STEP 8
+     STEP 9
   ========================= */
 
-  if (state.step === 8) {
+  if (state.step === 9) {
 
     const candidates =
       getCandidates();
@@ -1902,13 +2010,13 @@ function render() {
       <section class="card">
 
         <h2>
-          料金重視？たっぷり使いたい？
+          データ量の優先度
         </h2>
 
         <p class="description">
-          ここまでの内容で候補を絞り込みました！<br>
-          普段の使用量で安さを重視するか、
-          使う月に合わせて余裕を持たせるか選んでください。
+          ここまでの内容で候補を絞り込みました<br>
+          平均的なご利用量で料金を抑えるか、
+          最大利用月に合わせるかをお選びください
         </p>
 
 
@@ -1962,10 +2070,10 @@ function render() {
 
 
   /* =========================
-     STEP 9
+     STEP 10
   ========================= */
 
-  if (state.step === 9) {
+  if (state.step === 10) {
 
     const usageTags = `
       <div class="tags">
@@ -2018,11 +2126,11 @@ function render() {
         <section class="card">
 
           <h2>
-            まさやのおすすめプラン！
+            おすすめプラン
           </h2>
 
           <p class="description">
-            気になるプランを選んでね😊
+            ご希望のプランをお選びください
           </p>
 
           ${usageTags}
@@ -2040,7 +2148,7 @@ function render() {
 
 
           <div class="price-alert">
-            ⚠ この金額はあくまで概算です。<br>
+            この金額はあくまで概算です。<br>
             料金改定等により変動します。<br>
             最終的な金額は、必ずこの後スタッフと一緒にご確認ください。
           </div>
@@ -2076,18 +2184,18 @@ function render() {
         <section class="card">
 
           <h2>
-            乗り換えと機種変更、どっちがお得？
+            乗り換え・機種変更の比較
           </h2>
 
           <p class="description">
-            2つのパターンの料金を並べてみました。<br>
-            見比べながら、お店の人と一緒に選んでね💡
+            2つのパターンの料金をご用意いたしました<br>
+            スタッフと見比べながらお選びください
           </p>
 
           ${usageTags}
 
 
-          <h2>🔄 乗り換え（MNP）する場合</h2>
+          <h2>MNPでお乗り換えの場合</h2>
 
           ${
             mnpCandidates.length
@@ -2104,7 +2212,7 @@ function render() {
           }
 
 
-          <h2>📱 今のままお得にする（機種変更）場合</h2>
+          <h2>機種変更の場合</h2>
 
           ${
             changeCandidates.length
@@ -2122,7 +2230,7 @@ function render() {
 
 
           <div class="price-alert">
-            ⚠ この金額はあくまで概算です。<br>
+            この金額はあくまで概算です。<br>
             端末価格・頭金・施策ポイント・料金改定により変動します。<br>
             最終的な金額は、必ずこの後スタッフと一緒にご確認ください。
           </div>
@@ -2138,10 +2246,10 @@ function render() {
 
 
   /* =========================
-     STEP 10
+     STEP 11
   ========================= */
 
-  if (state.step === 10) {
+  if (state.step === 11) {
 
     const callOptions =
       getCallOptionsForPlan(state.selectedPlan);
@@ -2151,16 +2259,16 @@ function render() {
       <section class="card">
 
         <h2>
-          最後に、通話はどれくらいする？
+          通話オプションの選択
         </h2>
 
         <p class="description">
 
           ${state.selectedPlan.carrier} ${state.selectedPlan.name}
-          で選べるオプションだよ📞<br><br>
+          でお選びいただけるオプションです<br><br>
 
-          LINE通話などのアプリ通話は対象外です。<br>
-          「電話番号にかける」ふつうの通話が対象です。
+          LINE通話等のアプリ通話は対象外です<br>
+          「電話番号への発信」による通常の通話が対象です
 
         </p>
 
@@ -2196,10 +2304,10 @@ function render() {
 
 
   /* =========================
-     STEP 11
+     STEP 12
   ========================= */
 
-  if (state.step === 11) {
+  if (state.step === 12) {
 
     const best =
       state.selectedPlan;
@@ -2272,12 +2380,12 @@ function render() {
       <section class="card">
 
         <h1>
-          診断結果が出たよ🎉
+          診断結果
         </h1>
 
         <p class="description">
-          この画面をスタッフに見せてください。<br>
-          最終的な金額を一緒に確認します！
+          こちらの画面をスタッフにご提示ください<br>
+          最終的な金額を確認いたします
         </p>
 
 
@@ -2379,12 +2487,26 @@ function render() {
 
           </div>
 
+          ${
+            (
+              (state.newCards.length && !state.newCards.includes("none")) ||
+              state.newHome === "yes"
+            )
+            ? `
+              <div class="note">
+                ※新規発行・新規契約が必要な割引が含まれています。
+                別途お手続きが必要です。
+              </div>
+            `
+            : ""
+          }
+
         </div>
 
 
         <div class="price-alert">
 
-          ⚠ この金額はあくまで概算です。<br>
+            この金額はあくまで概算です。<br>
           端末価格・頭金・施策ポイント・通話オプション料金などにより変動します。<br>
           最終的な金額は、必ずこの後スタッフと一緒にご確認ください。
 
@@ -2397,9 +2519,16 @@ function render() {
         </div>
 
 
-        <h2>
-          選んだ内容のまとめ📋
-        </h2>
+        ${
+          (state.customerName || state.customerPhone)
+          ? `
+            <div class="customer-info">
+              ${state.customerName ? state.customerName + " 様" : ""}
+              ${state.customerPhone ? "　" + state.customerPhone : ""}
+            </div>
+          `
+          : ""
+        }
 
         <div class="result">
 
@@ -2450,7 +2579,7 @@ function render() {
 
 /* =========================================================
    EVENTS
-   ★重要
+   重要
    inputイベントではrenderしない
 ========================================================= */
 
@@ -2512,7 +2641,7 @@ function bindEvents() {
 
 
             /*
-             * ★カード選択ではrenderしてOK。
+             * カード選択ではrenderしてOK。
              * 入力画面ではないため問題なし。
              */
 
@@ -2688,7 +2817,7 @@ function bindEvents() {
          */
 
         if (
-          state.step === 5 &&
+          state.step === 6 &&
           hasAllCardsAlready(state.currentCards)
         ) {
 
@@ -2702,11 +2831,35 @@ function bindEvents() {
          * ズレる可能性があるためクリアする
          */
 
-        if (state.step < 9) {
+        if (state.step < 10) {
 
           state.selectedPlan = null;
 
         }
+
+        render();
+
+      }
+    );
+
+  }
+
+
+  /* 入力せずに進む（Step0） */
+
+  const skip =
+    document.getElementById("skipButton");
+
+  if (skip) {
+
+    skip.addEventListener(
+      "click",
+      function() {
+
+        state.customerName = "";
+        state.customerPhone = "";
+
+        state.step++;
 
         render();
 
@@ -2893,6 +3046,28 @@ function nextStep() {
 
   if (state.step === 0) {
 
+    const nameInput =
+      document.getElementById("customerNameInput");
+
+    const phoneInput =
+      document.getElementById("customerPhoneInput");
+
+    if (nameInput) {
+      state.customerName = nameInput.value.trim();
+    }
+
+    if (phoneInput) {
+      state.customerPhone =
+        toHalfWidthNumber(phoneInput.value.trim());
+    }
+
+  }
+
+
+  /* STEP 1 */
+
+  if (state.step === 1) {
+
     if (!state.deviceChoice) {
 
       alert(
@@ -2906,9 +3081,9 @@ function nextStep() {
   }
 
 
-  /* STEP 1 */
+  /* STEP 2 */
 
-  if (state.step === 1) {
+  if (state.step === 2) {
 
     if (!state.currentCarrier) {
 
@@ -2923,11 +3098,11 @@ function nextStep() {
   }
 
 
-  /* STEP 2
-     ★入力欄から直接読み取る
+  /* STEP 3
+     入力欄から直接読み取る
   */
 
-  if (state.step === 2) {
+  if (state.step === 3) {
 
     const averageInput =
       document.getElementById(
@@ -3023,9 +3198,9 @@ function nextStep() {
 
 
 
-  /* STEP 4 */
+  /* STEP 5 */
 
-  if (state.step === 4) {
+  if (state.step === 5) {
 
     if (!state.currentCards.length) {
 
@@ -3050,9 +3225,9 @@ function nextStep() {
   }
 
 
-  /* STEP 5 */
+  /* STEP 6 */
 
-  if (state.step === 5) {
+  if (state.step === 6) {
 
     if (!state.newCards.length) {
 
@@ -3063,10 +3238,10 @@ function nextStep() {
   }
 
 
-  /* STEP 7 */
+  /* STEP 8 */
 
   if (
-    state.step === 7 &&
+    state.step === 8 &&
     state.deviceChoice !== "sim"
   ) {
 
@@ -3083,9 +3258,9 @@ function nextStep() {
   }
 
 
-  /* STEP 8 */
+  /* STEP 9 */
 
-  if (state.step === 8) {
+  if (state.step === 9) {
 
     if (!state.usagePriority) {
 
@@ -3100,9 +3275,9 @@ function nextStep() {
   }
 
 
-  /* STEP 9 */
+  /* STEP 10 */
 
-  if (state.step === 9) {
+  if (state.step === 10) {
 
     if (!state.selectedPlan) {
 
@@ -3117,9 +3292,9 @@ function nextStep() {
   }
 
 
-  /* STEP 10 */
+  /* STEP 11 */
 
-  if (state.step === 10) {
+  if (state.step === 11) {
 
     if (!state.callOption) {
 
@@ -3278,7 +3453,7 @@ function calculatePlans(
     if (cardResult.label) {
 
       discountLabels.push(
-        cardResult.label
+        cardResult.label + "（▲" + money(cardResult.amount) + "）"
       );
 
     }
@@ -3296,7 +3471,7 @@ function calculatePlans(
     if (homeResult.label) {
 
       discountLabels.push(
-        homeResult.label
+        homeResult.label + "（▲" + money(homeResult.amount) + "）"
       );
 
     }
@@ -3338,7 +3513,7 @@ function calculatePlans(
     if (familyDiscount > 0) {
 
       discountLabels.push(
-        "家族割"
+        "家族割（▲" + money(familyDiscount) + "）"
       );
 
     }
@@ -3355,7 +3530,7 @@ function calculatePlans(
         plan.denkiDiscount;
 
       discountLabels.push(
-        "ドコモでんきセット割"
+        "ドコモでんきセット割（▲" + money(plan.denkiDiscount) + "）"
       );
 
     }
@@ -3379,9 +3554,10 @@ function calculatePlans(
           longTermAmount;
 
         discountLabels.push(
-          state.docomoYears === "20"
+          (state.docomoYears === "20"
           ? "長期利用割（20年以上）"
-          : "長期利用割（10年以上）"
+          : "長期利用割（10年以上）")
+          + "（▲" + money(longTermAmount) + "）"
         );
 
       }
