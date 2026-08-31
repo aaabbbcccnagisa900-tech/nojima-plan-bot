@@ -1071,10 +1071,10 @@ function planResultCard(
       </div>
 
       ${
-        plan.discountLabels.some(l => l.includes("🆕"))
+        plan.discountLabels.some(l => l.includes("⚠️"))
         ? `
           <div class="note">
-            🆕 の割引は、カードの新規発行または
+            ⚠️ の割引は、カードの新規発行または
             光回線・でんきの新規契約が必要です。
             別途お手続きをお願いいたします。
           </div>
@@ -2522,10 +2522,10 @@ function render() {
           </div>
 
           ${
-            best.discountLabels.some(l => l.includes("🆕"))
+            best.discountLabels.some(l => l.includes("⚠️"))
             ? `
               <div class="note">
-                🆕 の割引は、カードの新規発行または
+                ⚠️ の割引は、カードの新規発行または
                 光回線・でんきの新規契約が必要です。
                 別途お手続きをお願いいたします。
               </div>
@@ -3486,7 +3486,7 @@ function calculatePlans(
 
       discountLabels.push(
         cardResult.label + "（▲" + money(cardResult.amount) + "）"
-        + (cardResult.isNew ? " 🆕" : "")
+        + (cardResult.isNew ? " ⚠️" : "")
       );
 
     }
@@ -3505,7 +3505,7 @@ function calculatePlans(
 
       discountLabels.push(
         homeResult.label + "（▲" + money(homeResult.amount) + "）"
-        + (homeResult.isNew ? " 🆕" : "")
+        + (homeResult.isNew ? " ⚠️" : "")
       );
 
     }
