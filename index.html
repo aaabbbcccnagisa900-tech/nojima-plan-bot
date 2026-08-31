@@ -81,6 +81,17 @@ button {
   width: auto;
 }
 
+.inherited-telop {
+  margin: 6px 15px 0;
+  padding: 8px 12px;
+  background: #eef0f3;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: #333;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .logo {
   font-size: 18px;
   font-weight: 800;
@@ -374,7 +385,8 @@ h2 {
   line-height: 1.7;
 }
 
-.plan-select-btn {
+.plan-select-btn,
+.full-width-btn {
   width: 100%;
   margin-top: 12px;
 }
@@ -441,6 +453,8 @@ h2 {
 <div class="mascot-banner">
   <img id="mascotImg" src="" alt="料金案内bot キャラクター">
 </div>
+
+<div id="inheritedTelop" class="inherited-telop hidden"></div>
 
 <main id="app"></main>
 
@@ -825,6 +839,7 @@ const state = {
 
   customerName: "",
   customerPhone: "",
+  customerAge: "",
 
   deviceChoice: null,
 
@@ -864,7 +879,11 @@ const state = {
     change: false
   },
 
-  callOption: null
+  callOption: null,
+
+  skipCardHomeSteps: false,
+
+  consultNumber: 1
 
 };
 
@@ -1157,9 +1176,123 @@ function updateMascot() {
 
 }
 
+
+/* =========================================================
+   引き継ぎ情報テロップ
+   （家族コンサル時に、カード・光・でんきの
+   引き継ぎ内容を固定表示する）
+========================================================= */
+
+function buildInheritedSummary() {
+
+  const parts = [];
+
+  const cardParts = [];
+
+  state.currentCards.forEach(id => {
+    if (id !== "none") {
+      cardParts.push(CARD_LABELS[id] || id);
+    }
+  });
+
+  state.newCards.forEach(id => {
+    if (id !== "none") {
+      cardParts.push((CARD_LABELS[id] || id) + " ⚠️");
+    }
+  });
+
+  if (cardParts.length) {
+    parts.push(cardParts.join("・"));
+  }
+
+
+  const homeNames = {
+    docomo: "ドコモ光",
+    au: "auひかり等",
+    softbank: "SoftBank光等"
+  };
+
+  if (state.homeCarrier !== "none") {
+
+    parts.push(homeNames[state.homeCarrier]);
+
+  } else if (state.newHome === "yes") {
+
+    parts.push("光回線 新規契約予定 ⚠️");
+
+  }
+
+
+  if (state.auHomePhone === "yes") {
+    parts.push("au固定電話あり");
+  }
+
+  if (state.auDenki === "yes") {
+    parts.push("auでんき");
+  }
+
+  if (state.docomoDenki === "yes") {
+    parts.push("ドコモでんき");
+  }
+
+
+  return parts.join(" / ");
+
+}
+
+function updateInheritedTelop() {
+
+  const telop =
+    document.getElementById("inheritedTelop");
+
+  if (!telop) {
+    return;
+  }
+
+  if (
+    state.consultNumber <= 1 &&
+    !state.skipCardHomeSteps
+  ) {
+
+    telop.classList.add("hidden");
+    telop.innerHTML = "";
+    return;
+
+  }
+
+  const lines = [];
+
+  if (state.consultNumber > 1) {
+
+    lines.push(
+      state.consultNumber + "人目のご案内"
+    );
+
+  }
+
+  if (state.skipCardHomeSteps) {
+
+    const summary =
+      buildInheritedSummary();
+
+    lines.push(
+      "引き継ぎ中：" + (summary || "なし")
+    );
+
+  }
+
+  telop.classList.remove("hidden");
+
+  telop.innerHTML =
+    lines.join("　/　");
+
+}
+
 function render() {
 
   updateMascot();
+
+  updateInheritedTelop();
 
   const app =
     document.getElementById("app");
@@ -1217,6 +1350,23 @@ function render() {
           autocomplete="off"
           placeholder="例：090-1234-5678"
           value="${state.customerPhone}"
+        >
+
+        <label
+          class="label"
+          for="customerAgeInput"
+        >
+          ご年齢
+        </label>
+
+        <input
+          id="customerAgeInput"
+          class="data-input"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="例：35"
+          value="${state.customerAge}"
         >
 
         <div class="actions">
@@ -2067,14 +2217,6 @@ function render() {
         </div>
 
 
-        ${candidates.slice(0,4).map(
-          plan => planResultCard(plan, null, false)
-        ).join("")}
-
-
-        <br>
-
-
         <div class="choice-grid">
 
           ${makeChoice(
@@ -2094,6 +2236,14 @@ function render() {
           )}
 
         </div>
+
+
+        <br>
+
+
+        ${candidates.slice(0,4).map(
+          plan => planResultCard(plan, null, false)
+        ).join("")}
 
         ${actions("最終候補を見る")}
 
@@ -2552,10 +2702,11 @@ function render() {
 
 
         ${
-          (state.customerName || state.customerPhone)
+          (state.customerName || state.customerPhone || state.customerAge)
           ? `
             <div class="customer-info">
               ${state.customerName ? state.customerName + " 様" : ""}
+              ${state.customerAge ? "　" + state.customerAge + "歳" : ""}
               ${state.customerPhone ? "　" + state.customerPhone : ""}
             </div>
           `
@@ -2572,6 +2723,15 @@ function render() {
           `).join("")}
 
         </div>
+
+
+        <button
+          type="button"
+          class="secondary full-width-btn"
+          id="familyConsultButton"
+        >
+          追加で家族をコンサルする
+        </button>
 
 
         <div class="actions">
@@ -2858,6 +3018,21 @@ function bindEvents() {
         }
 
         /*
+         * 家族コンサルでカード・光・でんきの情報を
+         * 引き継いでいる場合、戻るときもStep5〜7を飛ばす
+         */
+
+        if (
+          state.skipCardHomeSteps &&
+          state.step >= 5 &&
+          state.step <= 7
+        ) {
+
+          state.step = 4;
+
+        }
+
+        /*
          * Step9より前に戻った場合、
          * 選択済みプランは条件変更で
          * ズレる可能性があるためクリアする
@@ -2890,8 +3065,116 @@ function bindEvents() {
 
         state.customerName = "";
         state.customerPhone = "";
+        state.customerAge = "";
 
         state.step++;
+
+        render();
+
+      }
+    );
+
+  }
+
+
+  /* 追加で家族をコンサルする */
+
+  const familyConsult =
+    document.getElementById("familyConsultButton");
+
+  if (familyConsult) {
+
+    familyConsult.addEventListener(
+      "click",
+      function() {
+
+        const inherit =
+          confirm(
+            "カード・光回線・でんきの情報を引き継ぎますか？"
+          );
+
+        state.consultNumber++;
+
+        const kept =
+          inherit
+          ? {
+              currentCards: state.currentCards.slice(),
+              newCards: state.newCards.slice(),
+              homeCarrier: state.homeCarrier,
+              newHome: state.newHome,
+              auHomePhone: state.auHomePhone,
+              auDenki: state.auDenki,
+              docomoDenki: state.docomoDenki,
+              familyCounts: {
+                docomo: state.familyCounts.docomo,
+                au: state.familyCounts.au,
+                softbank: state.familyCounts.softbank
+              }
+            }
+          : null;
+
+        state.step = 0;
+
+        state.customerName = "";
+        state.customerPhone = "";
+        state.customerAge = "";
+
+        state.deviceChoice = null;
+        state.selectedPlan = null;
+
+        state.currentCarrier = null;
+
+        state.averageGB = null;
+        state.maxGB = null;
+
+        state.familyCounts = {
+          docomo: 1,
+          au: 1,
+          softbank: 1
+        };
+
+        state.isSenior = "no";
+
+        state.docomoYears = "none";
+
+        state.devices = [];
+
+        state.usagePriority = null;
+
+        state.resultsExpanded = {
+          sim: false,
+          mnp: false,
+          change: false
+        };
+
+        state.callOption = null;
+
+        if (kept) {
+
+          state.currentCards = kept.currentCards;
+          state.newCards = kept.newCards;
+          state.homeCarrier = kept.homeCarrier;
+          state.newHome = kept.newHome;
+          state.auHomePhone = kept.auHomePhone;
+          state.auDenki = kept.auDenki;
+          state.docomoDenki = kept.docomoDenki;
+          state.familyCounts = kept.familyCounts;
+
+          state.skipCardHomeSteps = true;
+
+        } else {
+
+          state.currentCards = [];
+          state.newCards = [];
+          state.homeCarrier = "none";
+          state.newHome = "no";
+          state.auHomePhone = "no";
+          state.auDenki = "no";
+          state.docomoDenki = "no";
+
+          state.skipCardHomeSteps = false;
+
+        }
 
         render();
 
@@ -2934,7 +3217,8 @@ function bindEvents() {
 
   const numericInputIds = [
     "averageInput",
-    "maxInput"
+    "maxInput",
+    "customerAgeInput"
   ];
 
   numericInputIds
@@ -3084,6 +3368,9 @@ function nextStep() {
     const phoneInput =
       document.getElementById("customerPhoneInput");
 
+    const ageInput =
+      document.getElementById("customerAgeInput");
+
     if (nameInput) {
       state.customerName = nameInput.value.trim();
     }
@@ -3091,6 +3378,11 @@ function nextStep() {
     if (phoneInput) {
       state.customerPhone =
         toHalfWidthNumber(phoneInput.value.trim());
+    }
+
+    if (ageInput) {
+      state.customerAge =
+        toHalfWidthNumber(ageInput.value.trim());
     }
 
   }
@@ -3342,6 +3634,23 @@ function nextStep() {
 
 
   state.step++;
+
+
+  /*
+   * 家族コンサルでカード・光・でんきの情報を
+   * 引き継いでいる場合、Step5〜7をまとめて飛ばす
+   */
+
+  if (
+    state.skipCardHomeSteps &&
+    state.step >= 5 &&
+    state.step <= 7
+  ) {
+
+    state.step = 8;
+
+  }
+
 
   render();
 
