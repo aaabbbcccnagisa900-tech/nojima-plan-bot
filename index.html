@@ -1598,7 +1598,7 @@ function render() {
 
     const priorNote = group =>
       priorFamilyCounts[group] > 0
-      ? `<span class="tag">${groupLabel[group]}は家族${priorFamilyCounts[group]}人が決定済み・+1人増えます</span>`
+      ? `<span class="tag">${groupLabel[group]}は現在追加で${priorFamilyCounts[group]}人加入予定</span>`
       : "";
 
     html = `
