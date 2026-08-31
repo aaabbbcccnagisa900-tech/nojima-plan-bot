@@ -606,6 +606,43 @@ const PLANS = [
 
 const DEVICE_INSTALLMENT_MONTHS = 48;
 
+/*
+ * 全カード（6枚）保有、または
+ * 3系列すべてのGOLDカードを保有している場合、
+ * 新規発行の意味がないのでStep5を丸ごとスキップする
+ */
+
+function hasAllCardsAlready(
+  cards
+) {
+
+  const allCards =
+    ["d","dgold","au","augold","paypay","paypaygold"];
+
+  const allGolds =
+    ["dgold","augold","paypaygold"];
+
+  const hasAll = list =>
+    list.every(id => cards.includes(id));
+
+  return (
+    hasAll(allCards) ||
+    hasAll(allGolds)
+  );
+
+}
+
+
+const CARD_LABELS = {
+  d: "dカード",
+  dgold: "dカード GOLD",
+  au: "au PAY カード",
+  augold: "au PAY ゴールドカード",
+  paypay: "PayPayカード",
+  paypaygold: "PayPayカード ゴールド",
+  none: "なし"
+};
+
 const DEVICES = {
 
   "iPhone 17": {
@@ -646,6 +683,109 @@ function getDeviceMonthly(
 
 
 /* =========================================================
+   通話オプション
+
+   ほとんどのプランは共通で
+   5分以内かけ放題880円／24時間かけ放題1,980円。
+   shortCallIncluded のプランは
+   5分（または10分）かけ放題がすでに込み。
+========================================================= */
+
+function getCallOptionsForPlan(
+  plan
+) {
+
+  if (!plan) {
+    return [];
+  }
+
+  if (plan.shortCallIncluded) {
+
+    return [
+
+      {
+        value: "short",
+        label: "5分/10分以内かけ放題",
+        sub: "プランに込み・追加料金なし",
+        price: 0
+      },
+
+      {
+        value: "all",
+        label: "24時間かけ放題",
+        sub: "+1,980円/月",
+        price: 1980
+      }
+
+    ];
+
+  }
+
+  return [
+
+    {
+      value: "none",
+      label: "オプションなし",
+      sub: "30秒22円",
+      price: 0
+    },
+
+    {
+      value: "short",
+      label: "5分以内かけ放題",
+      sub: "+880円/月",
+      price: 880
+    },
+
+    {
+      value: "all",
+      label: "24時間かけ放題",
+      sub: "+1,980円/月",
+      price: 1980
+    }
+
+  ];
+
+}
+
+
+function getCallOptionPrice(
+  plan,
+  callOption
+) {
+
+  const options =
+    getCallOptionsForPlan(plan);
+
+  const found =
+    options.find(
+      o => o.value === callOption
+    );
+
+  return found ? found.price : 0;
+
+}
+
+
+function getCallOptionLabel(
+  plan,
+  callOption
+) {
+
+  const options =
+    getCallOptionsForPlan(plan);
+
+  const found =
+    options.find(
+      o => o.value === callOption
+    );
+
+  return found ? found.label : "未選択";
+
+}
+
+
+/* =========================================================
    STATE
 ========================================================= */
 
@@ -680,9 +820,15 @@ const state = {
 
   isSenior: "no",
 
-  device: null,
+  devices: [],
 
   usagePriority: null,
+
+  resultsExpanded: {
+    sim: false,
+    mnp: false,
+    change: false
+  },
 
   callOption: null
 
@@ -785,14 +931,16 @@ function actions(text = "次へ") {
 
 function planResultCard(
   plan,
-  rank
+  rank,
+  showSelectButton = true
 ) {
 
   const isSelected =
     state.selectedPlan &&
     state.selectedPlan.carrier === plan.carrier &&
     state.selectedPlan.name === plan.name &&
-    state.selectedPlan.scenario === plan.scenario;
+    state.selectedPlan.scenario === plan.scenario &&
+    state.selectedPlan.device === plan.device;
 
   return `
 
@@ -805,12 +953,24 @@ function planResultCard(
       }
 
       <div class="plan-name">
+        ${
+          plan.scenario === "mnp" || plan.scenario === "change"
+          ? `<span class="tag">${
+              plan.scenario === "mnp" ? "MNP" : "機種変更"
+            }</span> `
+          : ""
+        }
         ${plan.carrier} ${plan.name}
+        ${
+          plan.device
+          ? `<span class="tag">${plan.device}</span>`
+          : ""
+        }
       </div>
 
       <div class="total">
         ${money(plan.total)}
-        <span>/月・概算</span>
+        <span>/月・概算（通信料＋端末代）</span>
       </div>
 
 
@@ -834,7 +994,7 @@ function planResultCard(
               }
             </span>
 
-            <b>約${money(plan.device)}/月</b>
+            <b>約${money(plan.deviceCost)}/月</b>
 
           </div>
         `
@@ -890,15 +1050,22 @@ function planResultCard(
       }
 
 
-      <button
-        type="button"
-        class="secondary plan-select-btn ${isSelected ? "chosen" : ""}"
-        data-scenario="${plan.scenario}"
-        data-carrier="${plan.carrier}"
-        data-name="${plan.name}"
-      >
-        ${isSelected ? "✓ この内容に決定" : "この内容に決定"}
-      </button>
+      ${
+        showSelectButton
+        ? `
+          <button
+            type="button"
+            class="secondary plan-select-btn ${isSelected ? "chosen" : ""}"
+            data-scenario="${plan.scenario}"
+            data-carrier="${plan.carrier}"
+            data-name="${plan.name}"
+            data-device="${plan.device || ""}"
+          >
+            ${isSelected ? "✓ この内容に決定" : "この内容に決定"}
+          </button>
+        `
+        : ""
+      }
 
     </div>
 
@@ -1619,7 +1786,7 @@ function render() {
 
 
           <label class="label">
-            希望端末
+            希望端末（複数選択できます）
           </label>
 
           <div class="choice-grid">
@@ -1632,8 +1799,8 @@ function render() {
                   ? "YM・UQへMNPする場合は利用不可"
                   : "",
                 device,
-                "device",
-                state.device === device
+                "devices",
+                state.devices.includes(device)
               );
 
             }).join("")}
@@ -1642,6 +1809,9 @@ function render() {
 
 
           <div class="note">
+
+            複数選ぶと、それぞれの端末での金額を
+            まとめて比較できます。<br><br>
 
             MNP（乗り換え）と機種変更（今のキャリアのまま）、
             どちらがお得かはこの後の画面で
@@ -1701,57 +1871,9 @@ function render() {
         </div>
 
 
-        ${candidates.slice(0,4).map(plan => `
-
-          <div class="result">
-
-            <div class="plan-name">
-
-              ${
-                state.deviceChoice === "device"
-                ? `<span class="tag">${
-                    plan.scenario === "mnp"
-                    ? "MNP"
-                    : "機種変更"
-                  }</span> `
-                : ""
-              }
-
-              ${plan.carrier} ${plan.name}
-
-            </div>
-
-            <div class="detail">
-
-              <span>
-                実際のデータ上限
-              </span>
-
-              <b>
-                ${
-                  plan.limit === Infinity
-                  ? "無制限"
-                  : plan.limit + "GB"
-                }
-              </b>
-
-            </div>
-
-            <div class="detail">
-
-              <span>
-                通信＋端末概算
-              </span>
-
-              <b>
-                ${money(plan.total)}/月
-              </b>
-
-            </div>
-
-          </div>
-
-        `).join("")}
+        ${candidates.slice(0,4).map(
+          plan => planResultCard(plan, null, false)
+        ).join("")}
 
 
         <br>
@@ -1814,17 +1936,35 @@ function render() {
     `;
 
 
+    const moreButton = group => `
+      <button
+        type="button"
+        class="secondary expand-btn"
+        data-group="${group}"
+      >
+        ${
+          state.resultsExpanded[group]
+          ? "表示を減らす"
+          : "もっと見る"
+        }
+      </button>
+    `;
+
+
     if (state.deviceChoice === "sim") {
 
       const candidates =
-        calculatePlans("sim");
+        calculatePlans("sim", null);
+
+      const visibleCount =
+        state.resultsExpanded.sim ? candidates.length : 3;
 
       html = `
 
         <section class="card">
 
           <h2>
-            おすすめプラン TOP 3
+            おすすめプラン
           </h2>
 
           <p class="description">
@@ -1834,10 +1974,16 @@ function render() {
 
           ${usageTags}
 
-          ${candidates.slice(0,3).map(
+          ${candidates.slice(0, visibleCount).map(
             (plan,index) =>
             planResultCard(plan, index + 1)
           ).join("")}
+
+          ${
+            candidates.length > 3
+            ? moreButton("sim")
+            : ""
+          }
 
 
           <div class="price-alert">
@@ -1854,11 +2000,23 @@ function render() {
 
     } else {
 
+      const mnpAll =
+        getCandidatesForScenario("mnp");
+
+      const changeAll =
+        getCandidatesForScenario("change");
+
+      const mnpVisible =
+        state.resultsExpanded.mnp ? mnpAll.length : 2;
+
+      const changeVisible =
+        state.resultsExpanded.change ? changeAll.length : 2;
+
       const mnpCandidates =
-        calculatePlans("mnp").slice(0,2);
+        mnpAll.slice(0, mnpVisible);
 
       const changeCandidates =
-        calculatePlans("change").slice(0,2);
+        changeAll.slice(0, changeVisible);
 
       html = `
 
@@ -1886,6 +2044,12 @@ function render() {
             : `<p class="description">条件に合う候補がありません。</p>`
           }
 
+          ${
+            mnpAll.length > 2
+            ? moreButton("mnp")
+            : ""
+          }
+
 
           <h2>機種変更（今のキャリアのまま）の場合</h2>
 
@@ -1895,6 +2059,12 @@ function render() {
                 plan => planResultCard(plan, null)
               ).join("")
             : `<p class="description">条件に合う候補がありません。</p>`
+          }
+
+          ${
+            changeAll.length > 2
+            ? moreButton("change")
+            : ""
           }
 
 
@@ -1920,6 +2090,9 @@ function render() {
 
   if (state.step === 10) {
 
+    const callOptions =
+      getCallOptionsForPlan(state.selectedPlan);
+
     html = `
 
       <section class="card">
@@ -1930,51 +2103,36 @@ function render() {
 
         <p class="description">
 
+          ${state.selectedPlan.carrier} ${state.selectedPlan.name}
+          で選べる通話オプションです。<br><br>
+
           LINE電話などのアプリ通話は
-          通話オプションには含まれません。<br><br>
-
+          通話オプションには含まれません。<br>
           「電話番号に電話をかける」
-          通常の国内通話が対象です。<br><br>
-
-          オプションに入らない場合は
-          <b>30秒22円</b>です。
+          通常の国内通話が対象です。
 
         </p>
 
 
         <div class="choice-grid">
 
-          ${makeChoice(
-            "オプションなし",
-            "30秒22円",
-            "none",
-            "callOption",
-            state.callOption === "none"
-          )}
-
-          ${makeChoice(
-            "5分以内かけ放題",
-            "1回あたり5分以内の国内通話",
-            "short",
-            "callOption",
-            state.callOption === "short"
-          )}
-
-          ${makeChoice(
-            "24時間かけ放題",
-            "国内通話を時間を気にせず利用",
-            "all",
-            "callOption",
-            state.callOption === "all"
-          )}
+          ${callOptions.map(o =>
+            makeChoice(
+              o.label,
+              o.sub,
+              o.value,
+              "callOption",
+              state.callOption === o.value
+            )
+          ).join("")}
 
         </div>
 
 
         <div class="note">
 
-          ※プランによって利用できる通話オプション・
-          料金が異なります。最終料金はスタッフ確認。
+          ※選んだ内容は月額の合計に加算されます。
+          最終料金はスタッフ確認してください。
 
         </div>
 
@@ -1995,15 +2153,66 @@ function render() {
     const best =
       state.selectedPlan;
 
-    const callText = {
+    const callPrice =
+      getCallOptionPrice(best, state.callOption);
 
-      none: "通話オプションなし",
+    const callLabel =
+      getCallOptionLabel(best, state.callOption);
 
-      short: "5分以内かけ放題",
+    const grandTotal =
+      best.total + callPrice;
 
-      all: "24時間かけ放題"
 
-    }[state.callOption];
+    const cardList = list =>
+      list.length
+      ? list.map(id => CARD_LABELS[id] || id).join("、")
+      : "なし";
+
+    const summaryRows = [
+
+      ["相談内容",
+        state.deviceChoice === "sim"
+        ? "SIMのみ乗り換え"
+        : "端末を変えたい"
+      ],
+
+      ["現在のキャリア", state.currentCarrier || "-"],
+
+      ["平均使用量", state.averageGB + "GB"],
+      ["MAX使用量", state.maxGB + "GB"],
+
+      ["家族回線数（ドコモ）", state.familyCounts.docomo + "回線"],
+      ["家族回線数（au）", state.familyCounts.au + "回線"],
+      ["家族回線数（SoftBank）", state.familyCounts.softbank + "回線"],
+
+      ["60歳以上限定プラン対象", state.isSenior === "yes" ? "対象" : "対象外"],
+
+      ["お使いのカード", cardList(state.currentCards)],
+      ["新規発行するカード", cardList(state.newCards)],
+
+      ["現在契約中の光回線",
+        { docomo: "ドコモ光", au: "auひかり等", softbank: "SoftBank光等", none: "なし・その他" }[state.homeCarrier]
+      ],
+      ["光回線の新規契約意思", state.newHome === "yes" ? "検討する" : "変更しない"],
+      ["auガス", state.auGas === "yes" ? "利用中" : "利用していない"],
+      ["ドコモでんき", state.docomoDenki === "yes" ? "利用中" : "利用していない"],
+      ["ドコモ利用年数",
+        { none: "10年未満", "10": "10年以上", "20": "20年以上" }[state.docomoYears]
+      ]
+
+    ];
+
+    if (state.deviceChoice === "device") {
+
+      summaryRows.push(
+        ["選んだ端末", best.device || "-"]
+      );
+
+    }
+
+    summaryRows.push(
+      ["通話オプション", callLabel]
+    );
 
 
     html = `
@@ -2036,11 +2245,22 @@ function render() {
 
           <div class="plan-name">
             ${best.carrier} ${best.name}
+            ${
+              best.device
+              ? `<span class="tag">${best.device}</span>`
+              : ""
+            }
           </div>
 
           <div class="total">
-            ${money(best.total)}
-            <span>/月・概算</span>
+            ${money(grandTotal)}
+            <span>/月・概算（通信料＋端末代＋通話オプション）</span>
+          </div>
+
+
+          <div class="detail">
+            <span>通信料金</span>
+            <b>${money(best.communication)}/月</b>
           </div>
 
 
@@ -2058,7 +2278,7 @@ function render() {
                   }
                 </span>
 
-                <b>約${money(best.device)}/月</b>
+                <b>約${money(best.deviceCost)}/月</b>
 
               </div>
             `
@@ -2086,11 +2306,11 @@ function render() {
           <div class="detail">
 
             <span>
-              通話
+              通話オプション
             </span>
 
             <b>
-              ${callText}
+              ${callLabel}（${money(callPrice)}/月）
             </b>
 
           </div>
@@ -2120,12 +2340,36 @@ function render() {
 
         <div class="note">
 
-          第2・第3候補は前の画面で確認できます。
+          第2・第3候補は「戻る」ボタンで前の画面から確認できます。
+
+        </div>
+
+
+        <h2>
+          ご案内内容のまとめ
+        </h2>
+
+        <div class="result">
+
+          ${summaryRows.map(row => `
+            <div class="detail">
+              <span>${row[0]}</span>
+              <b>${row[1]}</b>
+            </div>
+          `).join("")}
 
         </div>
 
 
         <div class="actions">
+
+          <button
+            type="button"
+            class="secondary"
+            id="backButton"
+          >
+            戻る
+          </button>
 
           <button
             type="button"
@@ -2226,6 +2470,29 @@ function bindEvents() {
           }
 
 
+          /* 端末（複数選択・トグル） */
+
+          if (key === "devices") {
+
+            if (state.devices.includes(value)) {
+
+              state.devices =
+                state.devices.filter(
+                  item => item !== value
+                );
+
+            } else {
+
+              state.devices.push(value);
+
+            }
+
+            render();
+
+            return;
+          }
+
+
           /* familyCounts.docomo のような複合キー */
 
           if (key.indexOf("familyCounts.") === 0) {
@@ -2242,6 +2509,30 @@ function bindEvents() {
 
           }
 
+
+          render();
+
+        }
+      );
+
+    });
+
+
+  /* もっと見るボタン（Step9） */
+
+  document
+    .querySelectorAll(".expand-btn")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        function() {
+
+          const group =
+            this.dataset.group;
+
+          state.resultsExpanded[group] =
+            !state.resultsExpanded[group];
 
           render();
 
@@ -2270,19 +2561,25 @@ function bindEvents() {
           const name =
             this.dataset.name;
 
+          const device =
+            this.dataset.device || null;
+
           const list =
-            calculatePlans(scenario);
+            calculatePlans(scenario, device);
 
           const found =
             list.find(
               p =>
                 p.carrier === carrier &&
-                p.name === name
+                p.name === name &&
+                p.device === device
             );
 
           if (found) {
 
             state.selectedPlan = found;
+
+            state.callOption = null;
 
             render();
 
@@ -2332,6 +2629,20 @@ function bindEvents() {
             0,
             state.step - 1
           );
+
+        /*
+         * Step5が自動スキップされる条件なら、
+         * 戻るときもStep5を飛ばす
+         */
+
+        if (
+          state.step === 5 &&
+          hasAllCardsAlready(state.currentCards)
+        ) {
+
+          state.step--;
+
+        }
 
         /*
          * Step9より前に戻った場合、
@@ -2670,6 +2981,20 @@ function nextStep() {
 
     }
 
+
+    /*
+     * 全カード保有 or 3系列すべてGOLD保有の場合、
+     * 新規発行するカードがないのでStep5をスキップ
+     */
+
+    if (hasAllCardsAlready(state.currentCards)) {
+
+      state.newCards = ["none"];
+
+      state.step++;
+
+    }
+
   }
 
 
@@ -2693,7 +3018,7 @@ function nextStep() {
     state.deviceChoice !== "sim"
   ) {
 
-    if (!state.device) {
+    if (!state.devices.length) {
 
       alert(
         "希望端末を選択してください。"
@@ -2769,7 +3094,8 @@ function nextStep() {
 ========================================================= */
 
 function calculatePlans(
-  scenario
+  scenario,
+  deviceName
 ) {
 
   /*
@@ -2828,7 +3154,7 @@ function calculatePlans(
 
     if (
       scenario === "mnp" &&
-      state.device === "iPhone 17" &&
+      deviceName === "iPhone 17" &&
       (
         plan.carrier === "Y!mobile" ||
         plan.carrier === "UQ mobile"
@@ -3025,11 +3351,11 @@ function calculatePlans(
 
     if (
       scenario !== "sim" &&
-      state.device
+      deviceName
     ) {
 
       const deviceInfo =
-        DEVICES[state.device];
+        DEVICES[deviceName];
 
       device =
         getDeviceMonthly(
@@ -3049,6 +3375,9 @@ function calculatePlans(
       scenario:
         scenario,
 
+      device:
+        deviceName || null,
+
       carrier:
         plan.carrier,
 
@@ -3061,14 +3390,17 @@ function calculatePlans(
       communication:
         communication,
 
-      device:
+      deviceCost:
         device,
 
       total:
         total,
 
       discountLabels:
-        discountLabels
+        discountLabels,
+
+      shortCallIncluded:
+        plan.shortCallIncluded || false
 
     });
 
@@ -3099,23 +3431,58 @@ function getCandidates() {
 
   if (state.deviceChoice === "sim") {
 
-    return calculatePlans("sim");
+    return calculatePlans("sim", null);
 
   }
 
 
-  const mnpList =
-    calculatePlans("mnp");
+  const result = [];
 
-  const changeList =
-    calculatePlans("change");
+  state.devices.forEach(device => {
 
-  return mnpList
-    .concat(changeList)
-    .sort(
-      (a,b) =>
-        a.total - b.total
+    result.push(
+      ...calculatePlans("mnp", device)
     );
+
+    result.push(
+      ...calculatePlans("change", device)
+    );
+
+  });
+
+  return result.sort(
+    (a,b) =>
+      a.total - b.total
+  );
+
+}
+
+
+/* =========================================================
+   候補一覧（Step9用・シナリオ別）
+
+   選ばれた端末すべて分の候補を、
+   MNP／機種変更それぞれでまとめて返す。
+========================================================= */
+
+function getCandidatesForScenario(
+  scenario
+) {
+
+  const result = [];
+
+  state.devices.forEach(device => {
+
+    result.push(
+      ...calculatePlans(scenario, device)
+    );
+
+  });
+
+  return result.sort(
+    (a,b) =>
+      a.total - b.total
+  );
 
 }
 
