@@ -72,6 +72,7 @@ button {
 
 .mascot-banner {
   display: flex;
+  align-items: flex-start;
   justify-content: flex-end;
   padding: 14px 15% 0 15px;
 }
@@ -79,6 +80,15 @@ button {
 .mascot-banner img {
   height: 150px;
   width: auto;
+}
+
+.customer-banner {
+  flex: 1;
+  padding-top: 10px;
+  text-align: center;
+  color: var(--sub);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .inherited-telop {
@@ -451,6 +461,7 @@ h2 {
 </header>
 
 <div class="mascot-banner">
+  <div id="customerBanner" class="customer-banner"></div>
   <img id="mascotImg" src="" alt="料金案内bot キャラクター">
 </div>
 
@@ -1290,11 +1301,63 @@ function updateInheritedTelop() {
 
 }
 
+
+/* =========================================================
+   お客様情報バナー
+   （Step0で入力後、まさやの左側に
+   小さく薄い色で常時表示する）
+========================================================= */
+
+function updateCustomerBanner() {
+
+  const banner =
+    document.getElementById("customerBanner");
+
+  if (!banner) {
+    return;
+  }
+
+  const hasInfo =
+    state.customerName ||
+    state.customerPhone ||
+    state.customerAge;
+
+  if (
+    state.step === 0 ||
+    !hasInfo
+  ) {
+
+    banner.innerHTML = "";
+    return;
+
+  }
+
+  const lines = [];
+
+  if (state.customerName) {
+    lines.push(state.customerName + " 様");
+  }
+
+  if (state.customerAge) {
+    lines.push(state.customerAge + " 歳");
+  }
+
+  if (state.customerPhone) {
+    lines.push(state.customerPhone);
+  }
+
+  banner.innerHTML =
+    lines.join("<br>");
+
+}
+
 function render() {
 
   updateMascot();
 
   updateInheritedTelop();
+
+  updateCustomerBanner();
 
   const app =
     document.getElementById("app");
