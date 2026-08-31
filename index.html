@@ -89,6 +89,17 @@ button {
   text-align: left;
 }
 
+.customer-banner .customer-count {
+  display: inline-block;
+  margin-bottom: 3px;
+  padding: 2px 8px;
+  background: #eef0f3;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475467;
+}
+
 .customer-banner .customer-name {
   font-size: 14px;
   font-weight: 800;
@@ -1447,15 +1458,7 @@ function updateCustomerBanner() {
     return;
   }
 
-  const hasInfo =
-    state.customerName ||
-    state.customerPhone ||
-    state.customerAge;
-
-  if (
-    state.step === 0 ||
-    !hasInfo
-  ) {
+  if (state.step === 0) {
 
     banner.innerHTML = "";
     return;
@@ -1472,6 +1475,9 @@ function updateCustomerBanner() {
     subParts.push(state.customerPhone);
   }
 
+  const countHtml =
+    `<div class="customer-count">${state.consultNumber}人目</div>`;
+
   const nameHtml =
     state.customerName
     ? `<div class="customer-name">${state.customerName} 様</div>`
@@ -1483,7 +1489,7 @@ function updateCustomerBanner() {
     : "";
 
   banner.innerHTML =
-    nameHtml + subHtml;
+    countHtml + nameHtml + subHtml;
 
 }
 
@@ -2912,7 +2918,7 @@ function render() {
               class="primary full-width-btn"
               id="endConsultButton"
             >
-              コンサルを終了する
+              コンサルを終了する（一覧を見る）
             </button>
           `
           : ""
@@ -3005,6 +3011,15 @@ function render() {
 
         <div class="tags">
           <span class="tag">合計 ${people.length}名</span>
+        </div>
+
+        <div class="result">
+          ${people.map((p, i) => `
+            <div class="detail">
+              <span>${i + 1}人目</span>
+              <b>${p.name ? p.name + " 様" : "お名前未入力"}</b>
+            </div>
+          `).join("")}
         </div>
 
 
