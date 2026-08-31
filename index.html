@@ -852,6 +852,121 @@ function getCallOptionLabel(
 
 
 /* =========================================================
+   まとめ表（診断結果ページ・履歴共通）
+========================================================= */
+
+function cardListText(list) {
+
+  return list.length
+  ? list.map(id => CARD_LABELS[id] || id).join("、")
+  : "なし";
+
+}
+
+function buildSummaryRows() {
+
+  const best =
+    state.selectedPlan;
+
+  const callLabel =
+    getCallOptionLabel(best, state.callOption);
+
+  const rows = [
+
+    ["相談内容",
+      state.deviceChoice === "sim"
+      ? "SIMのみ乗り換え"
+      : "端末を変えたい"
+    ],
+
+    ["現在のキャリア", state.currentCarrier || "-"],
+
+    ["平均使用量", state.averageGB + "GB"],
+    ["MAX使用量", state.maxGB + "GB"],
+
+    ["家族回線数（ドコモ）", state.familyCounts.docomo + "回線"],
+    ["家族回線数（au）", state.familyCounts.au + "回線"],
+    ["家族回線数（SoftBank）", state.familyCounts.softbank + "回線"],
+
+    ["60歳以上限定プラン対象", state.isSenior === "yes" ? "対象" : "対象外"],
+
+    ["お使いのカード", cardListText(state.currentCards)],
+    ["新規発行するカード", cardListText(state.newCards)],
+
+    ["現在契約中の光回線",
+      { docomo: "ドコモ光", au: "auひかり等", softbank: "SoftBank光等", none: "なし・その他" }[state.homeCarrier]
+    ],
+    ["光回線の新規契約意思", state.newHome === "yes" ? "検討する" : "変更しない"],
+    ["au：固定電話", state.auHomePhone === "yes" ? "契約している/する予定" : "契約していない"],
+    ["auでんき", state.auDenki === "yes" ? "利用中" : "利用していない"],
+    ["ドコモでんき", state.docomoDenki === "yes" ? "利用中" : "利用していない"],
+    ["ドコモ利用年数",
+      { none: "10年未満", "10": "10年以上", "20": "20年以上" }[state.docomoYears]
+    ]
+
+  ];
+
+  if (state.deviceChoice === "device") {
+
+    rows.push(
+      ["選んだ端末", best.device || "-"]
+    );
+
+  }
+
+  rows.push(
+    ["通話オプション", callLabel]
+  );
+
+  return rows;
+
+}
+
+
+/* =========================================================
+   1人分のコンサル結果スナップショット
+   （家族コンサル終了時のまとめ表示に使う）
+========================================================= */
+
+function snapshotConsultation() {
+
+  const best =
+    state.selectedPlan;
+
+  const callPrice =
+    getCallOptionPrice(best, state.callOption);
+
+  const callLabel =
+    getCallOptionLabel(best, state.callOption);
+
+  return {
+
+    name: state.customerName || "",
+    age: state.customerAge || "",
+    phone: state.customerPhone || "",
+
+    carrier: best.carrier,
+    planName: best.name,
+    device: best.device,
+    scenario: best.scenario,
+
+    grandTotal: best.total + callPrice,
+    callLabel: callLabel,
+
+    discountLabels: best.discountLabels.slice(),
+
+    summaryRows: buildSummaryRows(),
+
+    newCards: state.newCards.slice(),
+    newHome: state.newHome,
+    homeCarrierGroup: carrierGroup(best.carrier)
+
+  };
+
+}
+
+
+/* =========================================================
    STATE
 ========================================================= */
 
@@ -907,7 +1022,11 @@ const state = {
 
   consultNumber: 1,
 
-  familyMemberCarrierGroups: []
+  familyMemberCarrierGroups: [],
+
+  consultationHistory: [],
+
+  finalSummaryPeople: []
 
 };
 
@@ -2607,58 +2726,8 @@ function render() {
     const grandTotal =
       best.total + callPrice;
 
-
-    const cardList = list =>
-      list.length
-      ? list.map(id => CARD_LABELS[id] || id).join("、")
-      : "なし";
-
-    const summaryRows = [
-
-      ["相談内容",
-        state.deviceChoice === "sim"
-        ? "SIMのみ乗り換え"
-        : "端末を変えたい"
-      ],
-
-      ["現在のキャリア", state.currentCarrier || "-"],
-
-      ["平均使用量", state.averageGB + "GB"],
-      ["MAX使用量", state.maxGB + "GB"],
-
-      ["家族回線数（ドコモ）", state.familyCounts.docomo + "回線"],
-      ["家族回線数（au）", state.familyCounts.au + "回線"],
-      ["家族回線数（SoftBank）", state.familyCounts.softbank + "回線"],
-
-      ["60歳以上限定プラン対象", state.isSenior === "yes" ? "対象" : "対象外"],
-
-      ["お使いのカード", cardList(state.currentCards)],
-      ["新規発行するカード", cardList(state.newCards)],
-
-      ["現在契約中の光回線",
-        { docomo: "ドコモ光", au: "auひかり等", softbank: "SoftBank光等", none: "なし・その他" }[state.homeCarrier]
-      ],
-      ["光回線の新規契約意思", state.newHome === "yes" ? "検討する" : "変更しない"],
-      ["au：固定電話", state.auHomePhone === "yes" ? "契約している/する予定" : "契約していない"],
-      ["auでんき", state.auDenki === "yes" ? "利用中" : "利用していない"],
-      ["ドコモでんき", state.docomoDenki === "yes" ? "利用中" : "利用していない"],
-      ["ドコモ利用年数",
-        { none: "10年未満", "10": "10年以上", "20": "20年以上" }[state.docomoYears]
-      ]
-
-    ];
-
-    if (state.deviceChoice === "device") {
-
-      summaryRows.push(
-        ["選んだ端末", best.device || "-"]
-      );
-
-    }
-
-    summaryRows.push(
-      ["通話オプション", callLabel]
-    );
+    const summaryRows =
+      buildSummaryRows();
 
 
     html = `
@@ -2835,6 +2904,191 @@ function render() {
           追加で家族をコンサルする
         </button>
 
+        ${
+          state.consultationHistory.length > 0
+          ? `
+            <button
+              type="button"
+              class="primary full-width-btn"
+              id="endConsultButton"
+            >
+              コンサルを終了する
+            </button>
+          `
+          : ""
+        }
+
+
+        <div class="actions">
+
+          <button
+            type="button"
+            class="secondary"
+            id="backButton"
+          >
+            戻る
+          </button>
+
+          <button
+            type="button"
+            class="secondary"
+            id="resetButton"
+          >
+            最初から
+          </button>
+
+        </div>
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 13
+     家族全員分のまとめ
+  ========================= */
+
+  if (state.step === 13) {
+
+    const people =
+      state.finalSummaryPeople;
+
+    const cardSet = new Set();
+    const homeSet = new Set();
+
+    const homeGroupNames = {
+      docomo: "ドコモ光 新規契約",
+      au: "auひかり等 新規契約（auスマートバリュー）",
+      softbank: "SoftBank光等 新規契約"
+    };
+
+    people.forEach(p => {
+
+      p.newCards.forEach(id => {
+
+        if (id !== "none") {
+          cardSet.add(CARD_LABELS[id] || id);
+        }
+
+      });
+
+      if (p.newHome === "yes") {
+
+        homeSet.add(
+          homeGroupNames[p.homeCarrierGroup] || "光回線 新規契約"
+        );
+
+      }
+
+    });
+
+    const todoItems = [
+      ...Array.from(cardSet).map(c => "カード新規発行：" + c),
+      ...Array.from(homeSet)
+    ];
+
+    html = `
+
+      <section class="card">
+
+        <h1>
+          コンサル終了
+        </h1>
+
+        <p class="description">
+          本日ご案内した内容のまとめです<br>
+          カードや光回線の新規手続きは、ご家族で一度のお手続きで完了します
+        </p>
+
+
+        <div class="tags">
+          <span class="tag">合計 ${people.length}名</span>
+        </div>
+
+
+        <h2>
+          お手続きが必要なもの
+        </h2>
+
+        ${
+          todoItems.length
+          ? `
+            <div class="result">
+              ${todoItems.map(item => `
+                <div class="detail">
+                  <span>${item}</span>
+                  <b>⚠️</b>
+                </div>
+              `).join("")}
+            </div>
+          `
+          : `
+            <div class="note">
+              新規のお手続きが必要な項目はありません
+            </div>
+          `
+        }
+
+
+        <h2>
+          お一人ずつのご案内内容
+        </h2>
+
+        ${people.map((p, i) => `
+          <div class="result">
+
+            <div class="rank">
+              ${i + 1}人目${p.name ? "　" + p.name + " 様" : ""}
+            </div>
+
+            <div class="plan-name">
+              ${p.carrier} ${p.planName}
+              ${
+                p.device
+                ? `<span class="tag">${p.device}</span>`
+                : ""
+              }
+            </div>
+
+            <div class="total">
+              ${money(p.grandTotal)}
+              <span>/月・概算</span>
+            </div>
+
+            <div class="tags">
+              ${
+                p.discountLabels.map(
+                  label =>
+                  `<span class="tag">${label}</span>`
+                ).join("")
+              }
+            </div>
+
+            <button
+              type="button"
+              class="secondary full-width-btn accordion-toggle"
+              data-target="person-detail-${i}"
+            >
+              詳細を見る
+            </button>
+
+            <div
+              id="person-detail-${i}"
+              class="hidden"
+            >
+              ${p.summaryRows.map(row => `
+                <div class="detail">
+                  <span>${row[0]}</span>
+                  <b>${row[1]}</b>
+                </div>
+              `).join("")}
+            </div>
+
+          </div>
+        `).join("")}
+
 
         <div class="actions">
 
@@ -3010,6 +3264,42 @@ function bindEvents() {
             !state.resultsExpanded[group];
 
           render();
+
+        }
+      );
+
+    });
+
+
+  /* 詳細を見る（Step13・家族まとめ） */
+
+  document
+    .querySelectorAll(".accordion-toggle")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        function() {
+
+          const targetId =
+            this.dataset.target;
+
+          const target =
+            document.getElementById(targetId);
+
+          if (!target) {
+            return;
+          }
+
+          const isHidden =
+            target.classList.contains("hidden");
+
+          target.classList.toggle("hidden");
+
+          this.textContent =
+            isHidden
+            ? "詳細を閉じる"
+            : "詳細を見る";
 
         }
       );
@@ -3208,6 +3498,10 @@ function bindEvents() {
 
           }
 
+          state.consultationHistory.push(
+            snapshotConsultation()
+          );
+
         }
 
         const priorCounts =
@@ -3300,6 +3594,32 @@ function bindEvents() {
           state.skipCardHomeSteps = false;
 
         }
+
+        render();
+
+      }
+    );
+
+  }
+
+
+  /* コンサルを終了する */
+
+  const endConsult =
+    document.getElementById("endConsultButton");
+
+  if (endConsult) {
+
+    endConsult.addEventListener(
+      "click",
+      function() {
+
+        state.finalSummaryPeople =
+          state.consultationHistory.concat([
+            snapshotConsultation()
+          ]);
+
+        state.step = 13;
 
         render();
 
