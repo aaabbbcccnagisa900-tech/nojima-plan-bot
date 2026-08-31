@@ -84,11 +84,22 @@ button {
 
 .customer-banner {
   flex: 1;
-  padding-top: 10px;
-  text-align: center;
-  color: var(--sub);
-  font-size: 11px;
-  line-height: 1.6;
+  align-self: center;
+  padding: 8px 4px 8px 4px;
+  text-align: left;
+}
+
+.customer-banner .customer-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.customer-banner .customer-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.5;
 }
 
 .inherited-telop {
@@ -1332,22 +1343,28 @@ function updateCustomerBanner() {
 
   }
 
-  const lines = [];
-
-  if (state.customerName) {
-    lines.push(state.customerName + " 様");
-  }
+  const subParts = [];
 
   if (state.customerAge) {
-    lines.push(state.customerAge + " 歳");
+    subParts.push(state.customerAge + " 歳");
   }
 
   if (state.customerPhone) {
-    lines.push(state.customerPhone);
+    subParts.push(state.customerPhone);
   }
 
+  const nameHtml =
+    state.customerName
+    ? `<div class="customer-name">${state.customerName} 様</div>`
+    : "";
+
+  const subHtml =
+    subParts.length
+    ? `<div class="customer-sub">${subParts.join("　")}</div>`
+    : "";
+
   banner.innerHTML =
-    lines.join("<br>");
+    nameHtml + subHtml;
 
 }
 
