@@ -735,6 +735,21 @@ const DEVICES = {
   "iPhone 16": {
     price: 120000,
     reset: 1
+  },
+
+  "iPhone 17 Pro": {
+    price: 190000,
+    reset: 1
+  },
+
+  "Pixel 10a": {
+    price: 80000,
+    reset: 1
+  },
+
+  "Pixel 11": {
+    price: 140000,
+    reset: 1
   }
 
 };
@@ -1493,6 +1508,20 @@ function updateCustomerBanner() {
 
 }
 
+let lastScrollStep = null;
+
+function scrollToTopIfNewStep() {
+
+  if (state.step === lastScrollStep) {
+    return;
+  }
+
+  lastScrollStep = state.step;
+
+  window.scrollTo(0, 0);
+
+}
+
 function render() {
 
   updateMascot();
@@ -1500,6 +1529,8 @@ function render() {
   updateInheritedTelop();
 
   updateCustomerBanner();
+
+  scrollToTopIfNewStep();
 
   const app =
     document.getElementById("app");
@@ -3034,7 +3065,6 @@ function render() {
               ${todoItems.map(item => `
                 <div class="detail">
                   <span>${item}</span>
-                  <b>⚠️</b>
                 </div>
               `).join("")}
             </div>
