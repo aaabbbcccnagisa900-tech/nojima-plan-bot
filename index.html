@@ -135,6 +135,12 @@ button {
   color: var(--sub);
 }
 
+.data-date {
+  margin-top: 2px;
+  font-size: 9px;
+  color: #9ca3af;
+}
+
 .progress {
   margin-top: 8px;
   height: 5px;
@@ -463,6 +469,10 @@ h2 {
 
   <div class="subtitle">
     通信料金・割引・端末代までまとめて比較
+  </div>
+
+  <div class="data-date">
+    料金プラン：2026年8月1日時点（ノジマ資料より）／端末価格：2026年9月時点の概算
   </div>
 
   <div class="progress">
@@ -3193,6 +3203,60 @@ function render() {
 
   scrollToTopIfNewStep();
 
+  saveStateToStorage();
+
+}
+
+
+/* =========================================================
+   自動保存・復元
+   （誤ってリロードしても続きから再開できるように）
+========================================================= */
+
+const STORAGE_KEY = "nojimaPlanBotState_v1";
+
+function saveStateToStorage() {
+
+  try {
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(state)
+    );
+
+  } catch (e) {}
+
+}
+
+function loadStateFromStorage() {
+
+  try {
+
+    const raw =
+      localStorage.getItem(STORAGE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw);
+
+  } catch (e) {
+
+    return null;
+
+  }
+
+}
+
+function clearStoredState() {
+
+  try {
+
+    localStorage.removeItem(STORAGE_KEY);
+
+  } catch (e) {}
+
 }
 
 
@@ -3710,6 +3774,8 @@ function bindEvents() {
     reset.addEventListener(
       "click",
       function() {
+
+        clearStoredState();
 
         location.reload();
 
@@ -5079,7 +5145,42 @@ function money(
    START
 ========================================================= */
 
-render();
+(function initApp() {
+
+  const restored =
+    loadStateFromStorage();
+
+  const hasProgress =
+    restored &&
+    (
+      restored.step > 0 ||
+      restored.customerName ||
+      restored.customerPhone
+    );
+
+  if (hasProgress) {
+
+    const wantsRestore =
+      confirm(
+        "前回途中までの入力が残っています。続きから再開しますか？\n\n" +
+        "「OK」で再開／「キャンセル」で最初から始めます。"
+      );
+
+    if (wantsRestore) {
+
+      Object.assign(state, restored);
+
+    } else {
+
+      clearStoredState();
+
+    }
+
+  }
+
+  render();
+
+})();
 
 </script>
 
