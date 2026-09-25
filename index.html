@@ -507,6 +507,19 @@ const PLANS = [
   {
     carrier: "docomo",
     name: "ドコモ MAX",
+    /*
+     * ドコモU29/U22割（学割）：29歳以下は初回適用月を含む3ヶ月、
+     * 22歳以下は7ヶ月。データ量の段階ごとに割引額が違う
+     */
+    ageDiscount: {
+      maxAge: 29,
+      amounts: [2728,3828,550],
+      months: 3,
+      label: "ドコモU29割",
+      youngMaxAge: 22,
+      youngMonths: 7,
+      youngLabel: "ドコモU22割"
+    },
     limits: [1,3,Infinity],
     prices: [5698,6798,8448],
     cardType: "docomo",
@@ -528,6 +541,28 @@ const PLANS = [
     cardGoldDiscount: 550,
     homeDiscount: 1210,
     denkiDiscount: 110
+  },
+
+  {
+    carrier: "docomo",
+    name: "スマホデビュープランU15",
+    student: true,
+    maxAge: 15,
+    limits: [5,20],
+    prices: [2508,3278],
+    cardType: "docomo",
+    cardDiscount: 220,
+    cardGoldDiscount: 550,
+    /* 親子割（U15）：家族がドコモの場合、最大12ヶ月 */
+    periodDiscounts: [
+      {
+        label: "ドコモ親子割（U15）",
+        amounts: [1100,1870],
+        fromMonth: 1,
+        toMonth: 12,
+        requiresFamily: true
+      }
+    ]
   },
 
   {
@@ -577,6 +612,32 @@ const PLANS = [
     seniorOnly: true,
     shortCallIncluded: true,
     allCallPrice: 1100
+  },
+
+  {
+    carrier: "au",
+    name: "U12 バリュープラン",
+    student: true,
+    maxAge: 12,
+    limits: [Infinity],
+    prices: [1870],
+    cardType: "au",
+    cardDiscount: 220,
+    familyDiscount: [0,1100,1100],
+    planNote: "通信速度は最大300kbpsです（ショートメッセージ・通話向け。動画やゲームの利用は厳しいです）。"
+  },
+
+  {
+    carrier: "au",
+    name: "U18 バリュープラン",
+    student: true,
+    maxAge: 18,
+    limits: [3,20],
+    prices: [2398,4048],
+    cardType: "au",
+    cardDiscount: 220,
+    homeDiscount: 550,
+    familyDiscount: [0,220,550]
   },
 
   {
@@ -651,6 +712,50 @@ const PLANS = [
     cardGoldDiscount: 550,
     homeDiscount: 1100,
     familyDiscount: [0,220,550]
+  },
+
+  {
+    carrier: "SoftBank",
+    name: "スマホデビュープラン+ ライト",
+    student: true,
+    minAge: 5,
+    maxAge: 18,
+    debutOnly: true,
+    limits: [4],
+    prices: [2266],
+    periodDiscounts: [
+      {
+        label: "1年おトク割+",
+        amount: 1188,
+        fromMonth: 2,
+        toMonth: 13
+      }
+    ]
+  },
+
+  {
+    carrier: "SoftBank",
+    name: "スマホデビュープラン+ ベーシック",
+    student: true,
+    minAge: 5,
+    maxAge: 18,
+    debutOnly: true,
+    limits: [20],
+    prices: [3916],
+    periodDiscounts: [
+      {
+        label: "1年おトク割+",
+        amount: 1188,
+        fromMonth: 2,
+        toMonth: 13
+      },
+      {
+        label: "デビュー特典",
+        amount: 1650,
+        fromMonth: 2,
+        toMonth: 7
+      }
+    ]
   },
 
   {
@@ -1043,6 +1148,8 @@ function buildSummaryRows() {
 
     ["60歳以上限定プラン対象", state.isSenior === "yes" ? "対象" : "対象外"],
 
+    ["学割の判定年齢", studentAgeText()],
+
     ["お使いのカード", cardListText(state.currentCards)],
     ["新規発行するカード", cardListText(state.newCards)],
 
@@ -1191,6 +1298,8 @@ const state = {
 
   isSenior: "no",
 
+  studentAgeBand: "none",
+
   devices: [],
 
   usagePriority: null,
@@ -1272,6 +1381,149 @@ function makeChoice(
 
     </button>
   `;
+}
+
+
+/* =========================================================
+   学割の年齢判定
+
+   Step0でご年齢が入力されていればその年齢で判定。
+   未入力の場合はStep4で選んだ年齢区分（上限の年齢）で判定。
+========================================================= */
+
+const STUDENT_AGE_BANDS = [
+  ["12", "12歳以下"],
+  ["15", "15歳以下"],
+  ["18", "18歳以下"],
+  ["22", "22歳以下"],
+  ["29", "29歳以下"],
+  ["none", "30歳以上・対象外"]
+];
+
+function getEnteredAge() {
+
+  const age =
+    Number(state.customerAge);
+
+  return (
+    state.customerAge !== "" &&
+    Number.isFinite(age)
+  )
+  ? age
+  : null;
+
+}
+
+function getStudentAge() {
+
+  const entered =
+    getEnteredAge();
+
+  if (entered !== null) {
+    return entered;
+  }
+
+  if (
+    state.studentAgeBand &&
+    state.studentAgeBand !== "none"
+  ) {
+    return Number(state.studentAgeBand);
+  }
+
+  return null;
+
+}
+
+function isAgeEligible(
+  plan
+) {
+
+  const age =
+    getStudentAge();
+
+  return (
+    age !== null &&
+    age <= plan.maxAge &&
+    (!plan.minAge || age >= plan.minAge)
+  );
+
+}
+
+/*
+ * スマホデビュープラン+ は新規・ガラケーからの乗り換え・機種変更のみ。
+ * 他キャリアからのMNPは対象外（「その他」はガラケー・新規とみなす）
+ */
+
+function isDebutEligible(
+  plan,
+  scenario
+) {
+
+  if (state.currentCarrier === "その他") {
+    return true;
+  }
+
+  if (scenario === "change") {
+    return true;
+  }
+
+  return (
+    scenario === "sim" &&
+    isSameCarrier(plan.carrier)
+  );
+
+}
+
+function studentAgeText() {
+
+  const entered =
+    getEnteredAge();
+
+  if (entered !== null) {
+    return entered + "歳（ご年齢から判定）";
+  }
+
+  const band =
+    STUDENT_AGE_BANDS.find(
+      b => b[0] === (state.studentAgeBand || "none")
+    );
+
+  return band ? band[1] : "-";
+
+}
+
+function studentAgeQuestionHtml() {
+
+  if (getEnteredAge() !== null) {
+    return "";
+  }
+
+  return `
+
+    <label class="label">
+      学割の対象年齢の確認
+    </label>
+
+    <p class="description">
+      ご年齢が未入力のため、学割の判定に使用いたします
+    </p>
+
+    <div class="choice-grid three">
+
+      ${STUDENT_AGE_BANDS.map(b =>
+        makeChoice(
+          b[1],
+          "",
+          b[0],
+          "studentAgeBand",
+          (state.studentAgeBand || "none") === b[0]
+        )
+      ).join("")}
+
+    </div>
+
+  `;
+
 }
 
 
@@ -1402,6 +1654,12 @@ function planResultCard(
         : ""
       }
 
+      ${
+        plan.student
+        ? `<div class="tags"><span class="tag">学割</span></div>`
+        : ""
+      }
+
       <div class="plan-name">
         ${plan.carrier} ${plan.name}
       </div>
@@ -1483,7 +1741,9 @@ function planResultCard(
 
 
       ${
-        plan.limit !== Infinity &&
+        plan.planNote
+        ? `<div class="warning">${plan.planNote}</div>`
+        : plan.limit !== Infinity &&
         plan.limit < state.maxGB
         ? `
           <div class="warning">
@@ -2202,6 +2462,8 @@ function render() {
 
         </div>
 
+        ${studentAgeQuestionHtml()}
+
         ${actions()}
 
       </section>
@@ -2806,6 +3068,10 @@ function render() {
           }
         </span>
 
+        <span class="tag">
+          2年間の総額が安い順
+        </span>
+
       </div>
     `;
 
@@ -3186,6 +3452,12 @@ function render() {
 
         </div>
 
+
+        ${
+          best.planNote
+          ? `<div class="warning">${best.planNote}</div>`
+          : ""
+        }
 
         <div class="price-alert">
 
@@ -4009,6 +4281,8 @@ function bindEvents() {
 
         state.isSenior = "no";
 
+        state.studentAgeBand = "none";
+
         state.docomoYears = "none";
 
         state.devices = [];
@@ -4683,6 +4957,27 @@ function calculatePlans(
     }
 
 
+    /* 学割（年齢限定プラン） */
+
+    if (
+      plan.maxAge &&
+      !isAgeEligible(plan)
+    ) {
+
+      return;
+
+    }
+
+    if (
+      plan.debutOnly &&
+      !isDebutEligible(plan, scenario)
+    ) {
+
+      return;
+
+    }
+
+
     /* データ容量 */
 
     const index =
@@ -4715,6 +5010,9 @@ function calculatePlans(
 
 
     let discountLabels = [];
+
+    let isStudentPlan =
+      !!plan.student;
 
     /* 期間限定の割引（終了後の金額・2年総額の計算用） */
 
@@ -4856,7 +5154,8 @@ function calculatePlans(
 
         temporaryDiscounts.push({
           amount: campaign.amount,
-          months: campaign.months
+          fromMonth: 1,
+          toMonth: campaign.months
         });
 
       }
@@ -4872,6 +5171,106 @@ function calculatePlans(
       );
 
     }
+
+
+    /* ドコモU29/U22割（学割） */
+
+    if (plan.ageDiscount) {
+
+      const rule =
+        plan.ageDiscount;
+
+      const age =
+        getStudentAge();
+
+      const amount =
+        rule.amounts[index] || 0;
+
+      if (
+        age !== null &&
+        age <= rule.maxAge &&
+        amount > 0
+      ) {
+
+        const isYoung =
+          age <= rule.youngMaxAge;
+
+        const months =
+          isYoung ? rule.youngMonths : rule.months;
+
+        communication -=
+          amount;
+
+        temporaryDiscounts.push({
+          amount: amount,
+          fromMonth: 1,
+          toMonth: months
+        });
+
+        discountLabels.push(
+          (isYoung ? rule.youngLabel : rule.label)
+          + "（" + months + "ヶ月）"
+          + "（▲" + money(amount) + "）"
+        );
+
+        isStudentPlan = true;
+
+      }
+
+    }
+
+
+    /*
+     * 期間限定の割引（親子割・1年おトク割+・デビュー特典など）
+     * fromMonth が2以上の割引は「翌月から」適用のため、
+     * 初月の料金からは引かない
+     */
+
+    (plan.periodDiscounts || []).forEach(discount => {
+
+      if (
+        discount.requiresFamily &&
+        (state.familyCounts[carrierGroup(plan.carrier)] || 0) < 2
+      ) {
+        return;
+      }
+
+      const amount =
+        Array.isArray(discount.amounts)
+        ? (discount.amounts[index] || 0)
+        : discount.amount;
+
+      if (!amount) {
+        return;
+      }
+
+      const fromMonth =
+        discount.fromMonth || 1;
+
+      if (fromMonth === 1) {
+
+        communication -=
+          amount;
+
+      }
+
+      temporaryDiscounts.push({
+        amount: amount,
+        fromMonth: fromMonth,
+        toMonth: discount.toMonth
+      });
+
+      discountLabels.push(
+        discount.label
+        + (
+          fromMonth === 1
+          ? "（最大" + discount.toMonth + "ヶ月）"
+          : "（" + fromMonth + "〜" + discount.toMonth + "ヶ月目）"
+        )
+        + "（▲" + money(amount) + "）"
+      );
+
+    });
 
 
     /* アップグレード割（UQ→au、Y!mobile→SoftBank） */
@@ -4894,7 +5293,8 @@ function calculatePlans(
 
       temporaryDiscounts.push({
         amount: upgrade.amount,
-        months: upgrade.months
+        fromMonth: 1,
+        toMonth: upgrade.months
       });
 
       discountLabels.push(
@@ -4989,21 +5389,61 @@ function calculatePlans(
      * 2年間（24ヶ月）の総額
      */
 
-    const communicationAt = month =>
-      communication +
-      temporaryDiscounts
-        .filter(d => month > d.months)
-        .reduce((sum, d) => sum + d.amount, 0);
+    const sumAmount = list =>
+      list.reduce((sum, d) => sum + d.amount, 0);
 
-    const priceSteps =
-      Array.from(
-        new Set(temporaryDiscounts.map(d => d.months))
+    /* 期間限定の割引がすべて無い場合の通信料金 */
+
+    const baseCommunication =
+      communication +
+      sumAmount(
+        temporaryDiscounts.filter(d => d.fromMonth === 1)
+      );
+
+    const communicationAt = month =>
+      Math.max(
+        0,
+        baseCommunication -
+        sumAmount(
+          temporaryDiscounts.filter(
+            d => month >= d.fromMonth && month <= d.toMonth
+          )
+        )
+      );
+
+    /* 料金が切り替わる月ごとの通信料金 */
+
+    const priceSteps = [];
+
+    Array.from(
+      new Set(
+        temporaryDiscounts.flatMap(
+          d => [d.fromMonth, d.toMonth + 1]
+        )
       )
-      .sort((a,b) => a - b)
-      .map(months => ({
-        fromMonth: months + 1,
-        communication: communicationAt(months + 1)
-      }));
+    )
+    .filter(month => month > 1)
+    .sort((a,b) => a - b)
+    .forEach(month => {
+
+      const previous =
+        priceSteps.length
+        ? priceSteps[priceSteps.length - 1].communication
+        : communicationAt(1);
+
+      const price =
+        communicationAt(month);
+
+      if (price !== previous) {
+
+        priceSteps.push({
+          fromMonth: month,
+          communication: price
+        });
+
+      }
+
+    });
 
     let twoYearTotal = 0;
 
@@ -5048,7 +5488,13 @@ function calculatePlans(
         priceSteps,
 
       twoYearTotal:
-        twoYearTotal
+        twoYearTotal,
+
+      student:
+        isStudentPlan,
+
+      planNote:
+        plan.planNote || null
 
     });
 
@@ -5057,7 +5503,7 @@ function calculatePlans(
 
   result.sort(
     (a,b) =>
-      a.total - b.total
+      a.twoYearTotal - b.twoYearTotal
   );
 
 
@@ -5100,7 +5546,7 @@ function getCandidates() {
 
   return result.sort(
     (a,b) =>
-      a.total - b.total
+      a.twoYearTotal - b.twoYearTotal
   );
 
 }
@@ -5129,7 +5575,7 @@ function getCandidatesForScenario(
 
   return result.sort(
     (a,b) =>
-      a.total - b.total
+      a.twoYearTotal - b.twoYearTotal
   );
 
 }
@@ -5164,7 +5610,7 @@ function getCandidateGroups() {
       );
 
     list.sort(
-      (a,b) => a.total - b.total
+      (a,b) => a.twoYearTotal - b.twoYearTotal
     );
 
     return {
