@@ -663,6 +663,29 @@ const PLANS = [
 ];
 
 
+/*
+ * 光（自宅）セット割と家族割が併用できないキャリア
+ */
+
+const HOME_FAMILY_EXCLUSIVE_CARRIERS = [
+  "Y!mobile",
+  "UQ mobile"
+];
+
+
+/*
+ * 家族割の名称（ノジマ料金表の表記に合わせる）
+ */
+
+const FAMILY_DISCOUNT_NAMES = {
+  "docomo": "みんなドコモ割",
+  "au": "家族割プラス",
+  "SoftBank": "新みんな家族割",
+  "UQ mobile": "家族セット割",
+  "Y!mobile": "家族割"
+};
+
+
 /* =========================================================
    端末
 ========================================================= */
@@ -3239,7 +3262,18 @@ function loadStateFromStorage() {
       return null;
     }
 
-    return JSON.parse(raw);
+    /*
+     * JSONはInfinity（無制限）を保存できず null になるため、
+     * 復元時にデータ上限（limit）の null を無制限に戻す
+     */
+
+    return JSON.parse(
+      raw,
+      (key, value) =>
+        key === "limit" && value === null
+        ? Infinity
+        : value
+    );
 
   } catch (e) {
 
@@ -4388,19 +4422,6 @@ function calculatePlans(
     const homeResult =
       getHomeDiscount(plan);
 
-    communication -=
-      homeResult.amount;
-
-
-    if (homeResult.label) {
-
-      discountLabels.push(
-        homeResult.label + "（▲" + money(homeResult.amount) + "）"
-        + (homeResult.isNew ? " ⚠️" : "")
-      );
-
-    }
-
 
     /* 家族 */
 
@@ -4421,7 +4442,7 @@ function calculatePlans(
         : 0;
 
 
-    const familyDiscount =
+    let familyDiscount =
       plan.familyDiscount
       ? (
           plan.familyDiscount[
@@ -4431,6 +4452,48 @@ function calculatePlans(
       : 0;
 
 
+    /*
+     * Y!mobile：おうち割光セットと家族割は併用不可
+     * UQ mobile：自宅セット割と家族セット割は併用不可
+     * 両方の条件を満たす場合は割引額の高い方を適用
+     * （同額ならおうち割・自宅セット割を優先）
+     */
+
+    if (
+      HOME_FAMILY_EXCLUSIVE_CARRIERS.includes(plan.carrier) &&
+      homeResult.amount > 0 &&
+      familyDiscount > 0
+    ) {
+
+      if (homeResult.amount >= familyDiscount) {
+
+        familyDiscount = 0;
+
+      } else {
+
+        homeResult.amount = 0;
+        homeResult.label = null;
+        homeResult.isNew = false;
+
+      }
+
+    }
+
+
+    communication -=
+      homeResult.amount;
+
+
+    if (homeResult.label) {
+
+      discountLabels.push(
+        homeResult.label + "（▲" + money(homeResult.amount) + "）"
+        + (homeResult.isNew ? " ⚠️" : "")
+      );
+
+    }
+
+
     communication -=
       familyDiscount;
 
@@ -4438,7 +4501,8 @@ function calculatePlans(
     if (familyDiscount > 0) {
 
       discountLabels.push(
-        "家族割（▲" + money(familyDiscount) + "）"
+        (FAMILY_DISCOUNT_NAMES[plan.carrier] || "家族割")
+        + "（▲" + money(familyDiscount) + "）"
       );
 
     }
@@ -5104,9 +5168,16 @@ function getHomeDiscount(
 
   if (group === "au") {
 
+    /* UQ mobileでは「自宅セット割」という名称になる */
+
+    const internetName =
+      plan.carrier === "UQ mobile"
+      ? "自宅セット割"
+      : "auスマートバリュー";
+
     label =
       auInternetPath
-      ? "auスマートバリュー"
+      ? internetName
       : "自宅セット割（でんき）";
 
     isNew =
