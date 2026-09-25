@@ -602,7 +602,15 @@ const PLANS = [
     name: "コミコミプランバリュー",
     limits: [35],
     prices: [3828],
-    familyDiscount: [0,660,660],
+    /*
+     * 期間限定割引：最大13ヶ月▲660円。
+     * au PAY ゴールドカード支払いなら14ヶ月目以降も継続
+     */
+    campaignDiscount: {
+      amount: 660,
+      months: 13,
+      continueCard: "augold"
+    },
     shortCallIncluded: true,
     shortCallMinutes: 10,
     seniorAllCallPrice: 880
@@ -4570,6 +4578,40 @@ function calculatePlans(
       discountLabels.push(
         (FAMILY_DISCOUNT_NAMES[plan.carrier] || "家族割")
         + "（▲" + money(familyDiscount) + "）"
+      );
+
+    }
+
+
+    /* 期間限定割引（UQ コミコミプランバリュー等） */
+
+    if (plan.campaignDiscount) {
+
+      const campaign =
+        plan.campaignDiscount;
+
+      const cardId =
+        campaign.continueCard;
+
+      const hasContinueCard =
+        state.currentCards.concat(state.newCards)
+          .includes(cardId);
+
+      const continueCardIsNew =
+        hasContinueCard &&
+        !state.currentCards.includes(cardId);
+
+      communication -=
+        campaign.amount;
+
+      discountLabels.push(
+        (
+          hasContinueCard
+          ? "期間限定割（" + CARD_LABELS[cardId] + "で14ヶ月目以降も継続）"
+          : "期間限定割（最大" + campaign.months + "ヶ月）"
+        )
+        + "（▲" + money(campaign.amount) + "）"
+        + (continueCardIsNew ? " ⚠️" : "")
       );
 
     }
