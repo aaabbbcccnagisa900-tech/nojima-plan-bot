@@ -551,6 +551,13 @@ const PLANS = [
   {
     carrier: "au",
     name: "au バリューリンクプラン",
+    upgradeDiscount: {
+      from: "UQ mobile",
+      label: "UQからauアップグレード割",
+      amount: 2640,
+      months: 12,
+      unlimitedOnly: true
+    },
     limits: [1,Infinity],
     prices: [6358,8008],
     cardType: "au",
@@ -619,6 +626,12 @@ const PLANS = [
   {
     carrier: "SoftBank",
     name: "テイガク無制限",
+    upgradeDiscount: {
+      from: "Y!mobile",
+      label: "Y!mobileからSoftBankアップグレード割",
+      amount: 2420,
+      months: 12
+    },
     limits: [Infinity],
     prices: [8008],
     cardType: "paypay",
@@ -706,6 +719,17 @@ const FAMILY_DISCOUNT_NAMES = {
   "SoftBank": "新みんな家族割",
   "UQ mobile": "家族セット割",
   "Y!mobile": "家族割"
+};
+
+
+/*
+ * アップグレード割の利用期間条件
+ * （UQ→au：利用開始月から6ヶ月経過／Y!mobile→SoftBank：12ヶ月経過）
+ */
+
+const UPGRADE_RULES = {
+  "UQ mobile": { to: "au", minMonths: 6 },
+  "Y!mobile": { to: "SoftBank", minMonths: 12 }
 };
 
 
@@ -1035,6 +1059,20 @@ function buildSummaryRows() {
 
   ];
 
+  const upgradeRule =
+    UPGRADE_RULES[state.currentCarrier];
+
+  if (upgradeRule) {
+
+    rows.splice(2, 0, [
+      state.currentCarrier + "のご利用期間",
+      state.upgradeEligible === "yes"
+      ? upgradeRule.minMonths + "ヶ月以上"
+      : upgradeRule.minMonths + "ヶ月未満"
+    ]);
+
+  }
+
   if (state.deviceChoice === "device") {
 
     rows.push(
@@ -1080,6 +1118,13 @@ function snapshotConsultation() {
     scenario: best.scenario,
 
     grandTotal: best.total + callPrice,
+
+    priceSteps: best.priceSteps || [],
+
+    twoYearTotal:
+      typeof best.twoYearTotal === "number"
+      ? best.twoYearTotal + callPrice * 24
+      : null,
     callLabel: callLabel,
 
     discountLabels: best.discountLabels.slice(),
@@ -1121,6 +1166,8 @@ const state = {
   selectedPlan: null,
 
   currentCarrier: null,
+
+  upgradeEligible: null,
 
   averageGB: null,
   maxGB: null,
@@ -1229,6 +1276,54 @@ function makeChoice(
 
 
 /* =========================================================
+   アップグレード割の利用期間の質問（Step2）
+========================================================= */
+
+function upgradeQuestionHtml() {
+
+  const rule =
+    UPGRADE_RULES[state.currentCarrier];
+
+  if (!rule) {
+    return "";
+  }
+
+  return `
+
+    <label class="label">
+      ${state.currentCarrier}のご利用期間
+    </label>
+
+    <p class="description">
+      ${rule.to}へのアップグレード割の判定に使用いたします
+    </p>
+
+    <div class="choice-grid">
+
+      ${makeChoice(
+        rule.minMonths + "ヶ月以上",
+        "ご利用開始月から" + rule.minMonths + "ヶ月経過",
+        "yes",
+        "upgradeEligible",
+        state.upgradeEligible === "yes"
+      )}
+
+      ${makeChoice(
+        rule.minMonths + "ヶ月未満",
+        "",
+        "no",
+        "upgradeEligible",
+        state.upgradeEligible === "no"
+      )}
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
    ACTIONS
 ========================================================= */
 
@@ -1322,6 +1417,8 @@ function planResultCard(
         <b>${money(plan.communication)}/月</b>
       </div>
 
+      ${priceStepsHtml(plan)}
+
 
       ${
         plan.scenario !== "sim"
@@ -1355,6 +1452,8 @@ function planResultCard(
           }
         </b>
       </div>
+
+      ${twoYearHtml(plan.twoYearTotal, "概算")}
 
 
       <div class="tags">
@@ -1424,6 +1523,42 @@ function planResultCard(
 
     </div>
 
+  `;
+
+}
+
+
+/* =========================================================
+   期間限定割引の終了後の金額・2年総額（表示用）
+========================================================= */
+
+function priceStepsHtml(
+  plan
+) {
+
+  return (plan.priceSteps || []).map(step => `
+    <div class="detail">
+      <span>${step.fromMonth}ヶ月目からの通信料金</span>
+      <b>${money(step.communication)}/月</b>
+    </div>
+  `).join("");
+
+}
+
+function twoYearHtml(
+  twoYearTotal,
+  note
+) {
+
+  if (typeof twoYearTotal !== "number") {
+    return "";
+  }
+
+  return `
+    <div class="detail">
+      <span>2年間の総額（${note}）</span>
+      <b>${money(twoYearTotal)}</b>
+    </div>
   `;
 
 }
@@ -1595,11 +1730,11 @@ function updateCustomerBanner() {
   const subParts = [];
 
   if (state.customerAge) {
-    subParts.push(state.customerAge + " 歳");
+    subParts.push(escapeHtml(state.customerAge) + " 歳");
   }
 
   if (state.customerPhone) {
-    subParts.push(state.customerPhone);
+    subParts.push(escapeHtml(state.customerPhone));
   }
 
   const countHtml =
@@ -1607,7 +1742,7 @@ function updateCustomerBanner() {
 
   const nameHtml =
     state.customerName
-    ? `<div class="customer-name">${state.customerName} 様</div>`
+    ? `<div class="customer-name">${escapeHtml(state.customerName)} 様</div>`
     : "";
 
   const subHtml =
@@ -1690,7 +1825,7 @@ function render() {
           type="text"
           autocomplete="off"
           placeholder="例：野島 太郎"
-          value="${state.customerName}"
+          value="${escapeHtml(state.customerName)}"
         >
 
         <label
@@ -1707,7 +1842,7 @@ function render() {
           inputmode="tel"
           autocomplete="off"
           placeholder="例：090-1234-5678"
-          value="${state.customerPhone}"
+          value="${escapeHtml(state.customerPhone)}"
         >
 
         <label
@@ -1724,7 +1859,7 @@ function render() {
           inputmode="numeric"
           autocomplete="off"
           placeholder="例：35"
-          value="${state.customerAge}"
+          value="${escapeHtml(state.customerAge)}"
         >
 
         <div class="actions">
@@ -1840,6 +1975,8 @@ function render() {
           ).join("")}
 
         </div>
+
+        ${upgradeQuestionHtml()}
 
         ${actions()}
 
@@ -2962,6 +3099,8 @@ function render() {
             <b>${money(best.communication)}/月</b>
           </div>
 
+          ${priceStepsHtml(best)}
+
 
           ${
             best.scenario !== "sim"
@@ -3014,6 +3153,13 @@ function render() {
 
           </div>
 
+          ${twoYearHtml(
+            typeof best.twoYearTotal === "number"
+            ? best.twoYearTotal + callPrice * 24
+            : null,
+            "通話オプション込み・概算"
+          )}
+
 
           <div class="tags">
 
@@ -3060,9 +3206,9 @@ function render() {
           (state.customerName || state.customerPhone || state.customerAge)
           ? `
             <div class="customer-info">
-              ${state.customerName ? state.customerName + " 様" : ""}
-              ${state.customerAge ? "　" + state.customerAge + "歳" : ""}
-              ${state.customerPhone ? "　" + state.customerPhone : ""}
+              ${state.customerName ? escapeHtml(state.customerName) + " 様" : ""}
+              ${state.customerAge ? "　" + escapeHtml(state.customerAge) + "歳" : ""}
+              ${state.customerPhone ? "　" + escapeHtml(state.customerPhone) : ""}
             </div>
           `
           : ""
@@ -3087,6 +3233,41 @@ function render() {
         >
           追加で家族をコンサルする
         </button>
+
+        <div
+          id="inheritChoice"
+          class="result hidden"
+        >
+
+          <div class="plan-name">
+            カード・光回線・でんきの情報を引き継ぎますか？
+          </div>
+
+          <div class="note">
+            引き継ぐと、次の方はカード・光回線・でんきの質問を省略します
+          </div>
+
+          <div class="actions">
+
+            <button
+              type="button"
+              class="secondary inherit-btn"
+              data-inherit="no"
+            >
+              引き継がない
+            </button>
+
+            <button
+              type="button"
+              class="primary inherit-btn"
+              data-inherit="yes"
+            >
+              引き継ぐ
+            </button>
+
+          </div>
+
+        </div>
 
         ${
           state.consultationHistory.length > 0
@@ -3180,7 +3361,7 @@ function render() {
           ${people.map((p, i) => `
             <div class="detail">
               <span>${i + 1}人目</span>
-              <b>${p.name ? p.name + " 様" : "お名前未入力"}</b>
+              <b>${p.name ? escapeHtml(p.name) + " 様" : "お名前未入力"}</b>
             </div>
           `).join("")}
         </div>
@@ -3217,7 +3398,7 @@ function render() {
           <div class="result">
 
             <div class="rank">
-              ${i + 1}人目${p.name ? "　" + p.name + " 様" : ""}
+              ${i + 1}人目${p.name ? "　" + escapeHtml(p.name) + " 様" : ""}
             </div>
 
             <div class="plan-name">
@@ -3233,6 +3414,10 @@ function render() {
               ${money(p.grandTotal)}
               <span>/月・概算</span>
             </div>
+
+            ${priceStepsHtml(p)}
+
+            ${twoYearHtml(p.twoYearTotal, "通話オプション込み・概算")}
 
             <div class="tags">
               ${
@@ -3477,6 +3662,15 @@ function bindEvents() {
               Number(value);
 
           } else {
+
+            /* キャリアを変えたら利用期間の回答はやり直し */
+
+            if (
+              key === "currentCarrier" &&
+              state.currentCarrier !== value
+            ) {
+              state.upgradeEligible = null;
+            }
 
             state[key] = value;
 
@@ -3724,10 +3918,31 @@ function bindEvents() {
       "click",
       function() {
 
+        const panel =
+          document.getElementById("inheritChoice");
+
+        if (panel) {
+          panel.classList.toggle("hidden");
+        }
+
+      }
+    );
+
+  }
+
+
+  /* 引き継ぐ／引き継がない（家族コンサル開始） */
+
+  document
+    .querySelectorAll(".inherit-btn")
+    .forEach(button => {
+
+      button.addEventListener(
+      "click",
+      function() {
+
         const inherit =
-          confirm(
-            "カード・光回線・でんきの情報を引き継ぎますか？"
-          );
+          this.dataset.inherit === "yes";
 
         if (state.selectedPlan) {
 
@@ -3781,6 +3996,7 @@ function bindEvents() {
         state.selectedPlan = null;
 
         state.currentCarrier = null;
+        state.upgradeEligible = null;
 
         state.averageGB = null;
         state.maxGB = null;
@@ -3844,7 +4060,7 @@ function bindEvents() {
       }
     );
 
-  }
+    });
 
 
   /* コンサルを終了する */
@@ -4076,6 +4292,21 @@ function nextStep() {
         toHalfWidthNumber(ageInput.value.trim());
     }
 
+    /* 年齢が入力されていれば60歳以上限定プランの対象を自動で選ぶ */
+
+    const ageNumber =
+      Number(state.customerAge);
+
+    if (
+      state.customerAge !== "" &&
+      Number.isFinite(ageNumber)
+    ) {
+
+      state.isSenior =
+        ageNumber >= 60 ? "yes" : "no";
+
+    }
+
   }
 
 
@@ -4104,6 +4335,19 @@ function nextStep() {
 
       alert(
         "現在のキャリアを選択してください。"
+      );
+
+      return;
+
+    }
+
+    if (
+      UPGRADE_RULES[state.currentCarrier] &&
+      !state.upgradeEligible
+    ) {
+
+      alert(
+        "ご利用期間を選択してください。"
       );
 
       return;
@@ -4472,6 +4716,10 @@ function calculatePlans(
 
     let discountLabels = [];
 
+    /* 期間限定の割引（終了後の金額・2年総額の計算用） */
+
+    const temporaryDiscounts = [];
+
 
     /* カード */
 
@@ -4604,6 +4852,15 @@ function calculatePlans(
       communication -=
         campaign.amount;
 
+      if (!hasContinueCard) {
+
+        temporaryDiscounts.push({
+          amount: campaign.amount,
+          months: campaign.months
+        });
+
+      }
+
       discountLabels.push(
         (
           hasContinueCard
@@ -4612,6 +4869,37 @@ function calculatePlans(
         )
         + "（▲" + money(campaign.amount) + "）"
         + (continueCardIsNew ? " ⚠️" : "")
+      );
+
+    }
+
+
+    /* アップグレード割（UQ→au、Y!mobile→SoftBank） */
+
+    if (
+      plan.upgradeDiscount &&
+      state.currentCarrier === plan.upgradeDiscount.from &&
+      state.upgradeEligible === "yes" &&
+      (
+        !plan.upgradeDiscount.unlimitedOnly ||
+        limit === Infinity
+      )
+    ) {
+
+      const upgrade =
+        plan.upgradeDiscount;
+
+      communication -=
+        upgrade.amount;
+
+      temporaryDiscounts.push({
+        amount: upgrade.amount,
+        months: upgrade.months
+      });
+
+      discountLabels.push(
+        upgrade.label + "（" + upgrade.months + "ヶ月）"
+        + "（▲" + money(upgrade.amount) + "）"
       );
 
     }
@@ -4696,6 +4984,34 @@ function calculatePlans(
       communication + device;
 
 
+    /*
+     * 期間限定の割引が終わった後の通信料金と、
+     * 2年間（24ヶ月）の総額
+     */
+
+    const communicationAt = month =>
+      communication +
+      temporaryDiscounts
+        .filter(d => month > d.months)
+        .reduce((sum, d) => sum + d.amount, 0);
+
+    const priceSteps =
+      Array.from(
+        new Set(temporaryDiscounts.map(d => d.months))
+      )
+      .sort((a,b) => a - b)
+      .map(months => ({
+        fromMonth: months + 1,
+        communication: communicationAt(months + 1)
+      }));
+
+    let twoYearTotal = 0;
+
+    for (let month = 1; month <= 24; month++) {
+      twoYearTotal += communicationAt(month) + device;
+    }
+
+
     result.push({
 
       scenario:
@@ -4726,7 +5042,13 @@ function calculatePlans(
         discountLabels,
 
       shortCallIncluded:
-        plan.shortCallIncluded || false
+        plan.shortCallIncluded || false,
+
+      priceSteps:
+        priceSteps,
+
+      twoYearTotal:
+        twoYearTotal
 
     });
 
@@ -5300,6 +5622,25 @@ function getHomeDiscount(
     label: label,
     isNew: isNew
   };
+
+}
+
+
+/* =========================================================
+   HTMLエスケープ
+   （お名前などに " や < が入っても表示が崩れないように）
+========================================================= */
+
+function escapeHtml(
+  text
+) {
+
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 }
 
