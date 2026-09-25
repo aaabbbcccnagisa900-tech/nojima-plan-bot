@@ -590,8 +590,7 @@ const PLANS = [
       from: "UQ mobile",
       label: "UQからauアップグレード割",
       amount: 2640,
-      months: 12,
-      unlimitedOnly: true
+      months: 12
     },
     limits: [1,Infinity],
     prices: [6358,8008],
@@ -5278,11 +5277,7 @@ function calculatePlans(
     if (
       plan.upgradeDiscount &&
       state.currentCarrier === plan.upgradeDiscount.from &&
-      state.upgradeEligible === "yes" &&
-      (
-        !plan.upgradeDiscount.unlimitedOnly ||
-        limit === Infinity
-      )
+      state.upgradeEligible === "yes"
     ) {
 
       const upgrade =
