@@ -534,14 +534,18 @@ const PLANS = [
     carrier: "docomo",
     name: "ahamo",
     limits: [40],
-    prices: [2970]
+    prices: [2970],
+    shortCallIncluded: true,
+    allCallPrice: 1100
   },
 
   {
     carrier: "docomo",
     name: "ahamo 大盛り",
     limits: [120],
-    prices: [4950]
+    prices: [4950],
+    shortCallIncluded: true,
+    allCallPrice: 1100
   },
 
   {
@@ -563,7 +567,9 @@ const PLANS = [
     cardType: "au",
     cardDiscount: 220,
     homeDiscount: 1100,
-    seniorOnly: true
+    seniorOnly: true,
+    shortCallIncluded: true,
+    allCallPrice: 1100
   },
 
   {
@@ -585,7 +591,10 @@ const PLANS = [
     cardType: "au",
     cardDiscount: 220,
     homeDiscount: 1100,
-    familyDiscount: [0,550,550]
+    familyDiscount: [0,550,550],
+    shortCallMinutes: 10,
+    seniorAllCallPrice: 880,
+    callPack60Price: 660
   },
 
   {
@@ -594,7 +603,9 @@ const PLANS = [
     limits: [35],
     prices: [3828],
     familyDiscount: [0,660,660],
-    shortCallIncluded: true
+    shortCallIncluded: true,
+    shortCallMinutes: 10,
+    seniorAllCallPrice: 880
   },
 
   {
@@ -631,7 +642,8 @@ const PLANS = [
     cardGoldDiscount: 770,
     homeDiscount: 1650,
     familyDiscount: [0,1100,1100],
-    shortCallIncluded: true
+    shortCallMinutes: 10,
+    seniorAllCallPrice: 880
   },
 
   {
@@ -644,7 +656,8 @@ const PLANS = [
     cardGoldDiscount: 770,
     homeDiscount: 1650,
     familyDiscount: [0,1100,1100],
-    shortCallIncluded: true
+    shortCallMinutes: 10,
+    seniorAllCallPrice: 880
   },
 
   {
@@ -657,7 +670,9 @@ const PLANS = [
     cardGoldDiscount: 770,
     homeDiscount: 1650,
     familyDiscount: [0,1100,1100],
-    shortCallIncluded: true
+    shortCallIncluded: true,
+    shortCallMinutes: 10,
+    seniorAllCallPrice: 880
   }
 
 ];
@@ -805,11 +820,28 @@ function getDeviceMonthly(
 /* =========================================================
    通話オプション
 
-   ほとんどのプランは共通で
-   5分以内かけ放題880円／24時間かけ放題1,980円。
-   shortCallIncluded のプランは
-   5分（または10分）かけ放題がすでに込み。
+   基本は短時間かけ放題880円／24時間かけ放題1,980円。
+   プランごとの違いは PLANS 側で指定する
+   （ノジマ料金表 26.8.1更新 に準拠）。
+
+   shortCallIncluded  ：短時間かけ放題がプランに込み
+   shortCallMinutes   ：短時間かけ放題の分数（既定5分）
+   allCallPrice       ：24時間かけ放題の料金（既定1,980円）
+   seniorAllCallPrice ：60歳以上の24時間かけ放題の料金
+   callPack60Price    ：月60分までの通話パック
 ========================================================= */
+
+function findPlanDefinition(
+  plan
+) {
+
+  return PLANS.find(
+    p =>
+      p.carrier === plan.carrier &&
+      p.name === plan.name
+  ) || plan;
+
+}
 
 function getCallOptionsForPlan(
   plan
@@ -819,52 +851,87 @@ function getCallOptionsForPlan(
     return [];
   }
 
-  if (plan.shortCallIncluded) {
+  /*
+   * state.selectedPlan は計算結果のため、
+   * 通話の設定は元のプラン定義から読む
+   */
+
+  const def =
+    findPlanDefinition(plan);
+
+  const shortLabel =
+    (def.shortCallMinutes || 5) + "分以内かけ放題";
+
+  const isSeniorPrice =
+    def.seniorAllCallPrice &&
+    state.isSenior === "yes";
+
+  const allPrice =
+    isSeniorPrice
+    ? def.seniorAllCallPrice
+    : (def.allCallPrice || 1980);
+
+  const allOption = {
+    value: "all",
+    label: "24時間かけ放題",
+    sub: "+" + money(allPrice) + "/月"
+      + (isSeniorPrice ? "（60歳以上）" : ""),
+    price: allPrice
+  };
+
+  if (def.shortCallIncluded) {
 
     return [
 
       {
         value: "short",
-        label: "5分/10分以内かけ放題",
+        label: shortLabel,
         sub: "プランに込み・追加料金なし",
         price: 0
       },
 
-      {
-        value: "all",
-        label: "24時間かけ放題",
-        sub: "+1,980円/月",
-        price: 1980
-      }
+      allOption
 
     ];
 
   }
 
-  return [
+  const options = [
 
     {
       value: "none",
       label: "オプションなし",
       sub: "30秒22円",
       price: 0
-    },
+    }
+
+  ];
+
+  if (def.callPack60Price) {
+
+    options.push({
+      value: "pack60",
+      label: "通話パック（月60分まで）",
+      sub: "+" + money(def.callPack60Price) + "/月",
+      price: def.callPack60Price
+    });
+
+  }
+
+  options.push(
 
     {
       value: "short",
-      label: "5分以内かけ放題",
+      label: shortLabel,
       sub: "+880円/月",
       price: 880
     },
 
-    {
-      value: "all",
-      label: "24時間かけ放題",
-      sub: "+1,980円/月",
-      price: 1980
-    }
+    allOption
 
-  ];
+  );
+
+  return options;
 
 }
 
