@@ -574,6 +574,117 @@ h2 {
   color: #fff;
 }
 
+/* 保証の比較表（ノジマ保証基本表ベース） */
+
+.wt-wrap {
+  margin: 10px -14px 0;
+  padding: 0 14px 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wt {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 3px;
+  background: #1f56b0;
+  border-radius: 10px;
+  color: #111111;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.wt td,
+.wt th {
+  padding: 6px 4px;
+  background: #ffffff;
+  vertical-align: middle;
+}
+
+.wt .lab {
+  background: #0d1f5c;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.wt .lab-s {
+  background: #0d1f5c;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.wt .device {
+  background: #e60012;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.wt .nojima {
+  background: #2e3192;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+
+.wt .name {
+  background: #fff200;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.wt .green {
+  background: #21a336;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.wt .pink {
+  background: #f8a5ef;
+}
+
+.wt .pinkish {
+  background: #f8a5ef;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wt .gray {
+  background: #8c8c8c;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.wt .yellow {
+  background: #fff200;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wt .red {
+  color: #e60012;
+  font-weight: 800;
+}
+
+.wt .big {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.wt .small {
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.wt .opt {
+  font-size: 9px;
+}
+
 .jump-notice {
   margin-bottom: 8px;
   padding: 9px 11px;
@@ -1198,6 +1309,471 @@ function getDeviceMonthly(
 
 
 /* =========================================================
+   保証（ノジマ保証・キャリア補償・AppleCare+）
+
+   ノジマ「保証キャリア比較」表の「新」の列に準拠。
+   ドコモのキャリア補償のみ「旧」の金額を使う。
+   iPhone以外は後日対応（データがない端末は保証ページを出さない）。
+========================================================= */
+
+const NOJIMA_WARRANTY_TIERS = {
+  "メタル": { monthly: 1800, lump: 43200 },
+  "プラチナ": { monthly: 1200, lump: 28800 },
+  "プレミアム": { monthly: 1500, lump: 36000 },
+  "ハイスペック": { monthly: 990, lump: 23800 }
+};
+
+/*
+ * nojima ：キャリアグループごとのノジマ保証の名称
+ * carrier：キャリア補償の月額（null は取り扱いなし）
+ * apple  ：AppleCare+ の月額
+ */
+
+const WARRANTY_DEVICES = {
+  "iPhone 18 Pro Max": {
+    nojima: { docomo: "メタル", au: "メタル", softbank: "メタル" },
+    carrier: { docomo: null, au: 2450, softbank: 2180 },
+    apple: 1940
+  },
+  "iPhone 18 Pro": {
+    nojima: { docomo: "メタル", au: "メタル", softbank: "メタル" },
+    carrier: { docomo: null, au: 2450, softbank: 2180 },
+    apple: 1940
+  },
+  "iPhone Air": {
+    nojima: { docomo: "プラチナ", au: "メタル", softbank: "メタル" },
+    carrier: { docomo: 1460, au: 2450, softbank: 2180 },
+    apple: 1940
+  },
+  "iPhone 17 Pro": {
+    nojima: { docomo: "プラチナ", au: "メタル", softbank: "メタル" },
+    carrier: { docomo: 1460, au: 2450, softbank: 2180 },
+    apple: 1740
+  },
+  "iPhone 17e": {
+    nojima: { docomo: "ハイスペック", au: "プレミアム", softbank: "プレミアム" },
+    carrier: { docomo: 1100, au: 1790, softbank: 1680 },
+    apple: 1340
+  },
+  "iPhone 17": {
+    nojima: { docomo: "ハイスペック", au: "プレミアム", softbank: "プレミアム" },
+    carrier: { docomo: 1100, au: 1890, softbank: 1780 },
+    apple: 1540
+  },
+  "iPhone 16e": {
+    nojima: { docomo: "ハイスペック", au: "プラチナ", softbank: "プラチナ" },
+    carrier: { docomo: 880, au: 1790, softbank: 1680 },
+    apple: 1140
+  },
+  "iPhone 16": {
+    nojima: { docomo: "ハイスペック", au: "プラチナ", softbank: "プラチナ" },
+    carrier: { docomo: 880, au: 1790, softbank: 1780 },
+    apple: 1540
+  }
+};
+
+/* キャリア補償の内容（ahamoはドコモ、UQはau、Y!mobileはSoftBankの欄を使う） */
+
+const CARRIER_WARRANTY_INFO = {
+  docomo: {
+    logo: "docomo",
+    logoBg: "#e60012",
+    logoColor: "#ffffff",
+    name: "smartあんしん補償",
+    period: "終了期間無し",
+    content: "イエナカ機器補償<br>不正決済補償<br>携行品補償",
+    refresh: 12100,
+    repair: "×",
+    failure: "×",
+    ugp: "いつでもカエドキ申込時"
+  },
+  au: {
+    logo: "au",
+    logoBg: "#eb5505",
+    logoColor: "#ffffff",
+    name: "故障紛失サポート<br>with AppleCare Services",
+    period: "4年",
+    content: "本体補償",
+    refresh: 12900,
+    repair: "全額お客様のご負担",
+    failure: "全額お客様のご負担",
+    ugp: "スマトク申込時"
+  },
+  softbank: {
+    logo: "SoftBank",
+    logoBg: "#ffffff",
+    logoColor: "#555555",
+    name: "安心保証パック<br>with AppleCare",
+    period: "2年",
+    content: "本体補償",
+    refresh: 12900,
+    repair: "全額お客様のご負担",
+    failure: "全額お客様のご負担",
+    ugp: "トクサポ+申込時"
+  }
+};
+
+const APPLE_WARRANTY_REFRESH = 12900;
+
+/* ノジマ保証の「選べる安心パック」 */
+
+const WARRANTY_OPTIONS = {
+  none: { label: "オプションなし", monthly: 0, lump: 0 },
+  battery: { label: "バッテリー補償", monthly: 500, lump: 22000 },
+  data: { label: "データ復旧補償", monthly: 500, lump: 22000 },
+  double: { label: "バッテリー＋データ復旧", monthly: 1000, lump: 44000 }
+};
+
+function getWarrantyInfo(
+  plan
+) {
+
+  if (
+    !plan ||
+    !plan.device ||
+    state.deviceChoice !== "device"
+  ) {
+    return null;
+  }
+
+  const device =
+    WARRANTY_DEVICES[plan.device];
+
+  const group =
+    carrierGroup(plan.carrier);
+
+  if (!device || !group) {
+    return null;
+  }
+
+  const tierName =
+    device.nojima[group];
+
+  return {
+    device: plan.device,
+    group: group,
+    tierName: tierName,
+    nojimaName: tierName + "補償",
+    nojimaMonthly: NOJIMA_WARRANTY_TIERS[tierName].monthly,
+    nojimaLump: NOJIMA_WARRANTY_TIERS[tierName].lump,
+    carrier: CARRIER_WARRANTY_INFO[group],
+    carrierPrice: device.carrier[group],
+    applePrice: device.apple
+  };
+
+}
+
+/* 保証のページを出すかどうか（SIMのみ・iPhone以外は出さない） */
+
+function isWarrantyApplicable() {
+
+  if (state.deviceChoice === "sim") {
+    return false;
+  }
+
+  if (!state.selectedPlan) {
+    return true;
+  }
+
+  return !!getWarrantyInfo(state.selectedPlan);
+
+}
+
+/*
+ * 選んだ保証の費用
+ * monthly：毎月かかる金額／lump：一括で払う金額
+ */
+
+function getWarrantyCost() {
+
+  const info =
+    getWarrantyInfo(state.selectedPlan);
+
+  const none = {
+    monthly: 0,
+    lump: 0,
+    label: "加入しない"
+  };
+
+  if (!info || !state.warrantyChoice) {
+    return none;
+  }
+
+  const option =
+    WARRANTY_OPTIONS[state.warrantyOption] || WARRANTY_OPTIONS.none;
+
+  const optionText =
+    state.warrantyOption && state.warrantyOption !== "none"
+    ? "＋" + option.label
+    : "";
+
+  if (state.warrantyChoice === "nojimaMonthly") {
+
+    return {
+      monthly: info.nojimaMonthly + option.monthly,
+      lump: 0,
+      label: "ノジマ " + info.nojimaName + "（月額版）" + optionText
+    };
+
+  }
+
+  if (state.warrantyChoice === "nojimaLump") {
+
+    return {
+      monthly: 0,
+      lump: info.nojimaLump + option.lump,
+      label: "ノジマ " + info.nojimaName + "（一括）" + optionText
+    };
+
+  }
+
+  if (
+    state.warrantyChoice === "carrier" &&
+    info.carrierPrice
+  ) {
+
+    return {
+      monthly: info.carrierPrice,
+      lump: 0,
+      label: info.carrier.name.replace(/<br>/g, " ")
+    };
+
+  }
+
+  if (state.warrantyChoice === "apple") {
+
+    return {
+      monthly: info.applePrice,
+      lump: 0,
+      label: "AppleCare+ 盗難・紛失プラン"
+    };
+
+  }
+
+  return none;
+
+}
+
+/* 2年間の保証費用（月額×24＋一括） */
+
+function warrantyTwoYear(
+  cost
+) {
+
+  return cost.monthly * 24 + cost.lump;
+
+}
+
+/* 保証基本表をベースにした比較表 */
+
+function warrantyTableHtml(
+  info
+) {
+
+  const carrier =
+    info.carrier;
+
+  const yen = n =>
+    n.toLocaleString("ja-JP") + " 円";
+
+  const carrierActual =
+    info.carrierPrice
+    ? yen(info.carrierPrice * 24 + carrier.refresh)
+    : "-";
+
+  const appleActual =
+    yen(info.applePrice * 24 + APPLE_WARRANTY_REFRESH);
+
+  const optTotal = extra =>
+    (info.nojimaMonthly + extra).toLocaleString("ja-JP") + "円/月";
+
+  return `
+
+    <div class="wt-wrap">
+
+      <table class="wt">
+
+        <tr>
+          <th class="device">${info.device}</th>
+          <th class="nojima" colspan="2">nojima</th>
+          <th class="lab"></th>
+          <th style="background:${carrier.logoBg};color:${carrier.logoColor};font-size:17px;font-weight:900;">
+            ${carrier.logo}
+          </th>
+          <th style="background:#ffffff;font-size:15px;font-weight:900;">
+            Apple
+          </th>
+        </tr>
+
+        <tr>
+          <th class="lab">補償名</th>
+          <td class="name">${info.nojimaName}</td>
+          <td class="name">${info.nojimaName}<br>（月額版）</td>
+          <th class="lab-s">補償名</th>
+          <td class="opt"><b>${carrier.name}</b></td>
+          <td class="opt"><b>AppleCare+<br>盗難・紛失プラン<br>（docomoのみ）</b></td>
+        </tr>
+
+        <tr>
+          <th class="lab">利用料/期間</th>
+          <td>
+            一括<br>
+            <span class="big">${yen(info.nojimaLump)}</span><br>
+            満2年間（再更新時は一括のみ）
+          </td>
+          <td>
+            月々<br>
+            <span class="big">${yen(info.nojimaMonthly)}</span><br>
+            2年自動更新（最低1年〜）
+          </td>
+          <th class="lab-s">費用と方法<br>（期間）</th>
+          <td>
+            ${
+              info.carrierPrice
+              ? `月々<br><span class="big">${yen(info.carrierPrice)}</span><br>${carrier.period}`
+              : "取り扱いなし"
+            }
+          </td>
+          <td>
+            月々<br>
+            <span class="big">${yen(info.applePrice)}</span><br>
+            <span class="small">2年<br>紛失無しは-100円</span>
+          </td>
+        </tr>
+
+        <tr>
+          <th class="lab">補償内容</th>
+          <td class="green" colspan="2">破損・水没・紛失・盗難・内部システムエラー等</td>
+          <th class="lab-s">補償内容</th>
+          <td class="green" style="font-size:${carrier.content.length > 10 ? "10px" : "14px"};">
+            ${carrier.content}
+          </td>
+          <td class="green">本体補償</td>
+        </tr>
+
+        <tr>
+          <th class="lab">①リフレッシュ品交換</th>
+          <td class="pink" colspan="2">
+            <span class="big">5,500円</span><br>
+            <span class="small">
+              交換の場合お届けサポートで店頭来店不要OK<br>
+              iPhoneを紛失盗難時、iPhoneを探すで位置情報の確認が必要です
+            </span>
+          </td>
+          <th class="lab-s">リフレッシュ品交換</th>
+          <td><b>${yen(carrier.refresh)}</b></td>
+          <td><b>${yen(APPLE_WARRANTY_REFRESH)}</b></td>
+        </tr>
+
+        <tr>
+          <th class="lab">②修理代金負担</th>
+          <td colspan="2"><b>最大200,000円（税込み）分を2回まで</b></td>
+          <th class="lab-s">修理代金負担</th>
+          <td class="opt">${carrier.repair}</td>
+          <td class="opt">全額お客様のご負担</td>
+        </tr>
+
+        <tr>
+          <th class="lab">③故障時利用料</th>
+          <td colspan="2">
+            <span class="red">キャリア返却時に最大22,000円をノジマポイント還元</span><br>
+            <span class="small">※ノジマで端末再購入＋ノジマ補償加入時</span>
+          </td>
+          <th class="lab-s">故障時利用料</th>
+          <td class="opt">${carrier.failure}</td>
+          <td class="opt">全額お客様のご負担</td>
+        </tr>
+
+        <tr>
+          <th class="lab">④ノジマUGP</th>
+          <td colspan="2">
+            <span class="red" style="font-size:15px;">利用機種をノジマで下取りで<br>残価分をノジマポイント還元</span><br>
+            <span class="small">※ノジマで端末再購入＋ノジマ補償加入時</span>
+          </td>
+          <th class="lab">UGP</th>
+          <td class="opt">
+            <b>分割契約時の残価補填</b><br>
+            <span class="pinkish" style="display:inline-block;padding:2px 4px;margin:2px 0;">${carrier.ugp}</span><br>
+            2年後の買い替えで端末をキャリアに返却すると残価分の支払いが免除される
+          </td>
+          <td class="gray">無し</td>
+        </tr>
+
+        <tr>
+          <th class="lab">メリット</th>
+          <td class="yellow">①補償交換時のデータ移行サポート付き（通常25,000円）</td>
+          <td class="yellow">②店頭/郵送選べて安心対応<br>※リフレッシュ品交換</td>
+          <th class="lab-s">メリット</th>
+          <td colspan="2"><b>ー</b></td>
+        </tr>
+
+        <tr>
+          <th class="lab">選べる安心パック<br><span class="small">★加入者限定★</span></th>
+          <td class="opt">
+            バッテリー補償 22,000円（2年）<br>
+            データ復旧補償 22,000円（2年）<br>
+            バッテリー＋データ復旧 44,000円（2年）
+          </td>
+          <td class="opt">
+            バッテリー補償 500円/月<br>
+            データ復旧補償 500円/月<br>
+            バッテリー＋データ復旧 1,000円/月
+          </td>
+          <th class="lab" colspan="3" rowspan="2" style="font-size:16px;">無し</th>
+        </tr>
+
+        <tr>
+          <th class="lab">オプション加入時<br>合計金額</th>
+          <td><b>まるっとパックでお得にご案内可</b></td>
+          <td class="opt">
+            <b>
+              ${optTotal(500)}／${optTotal(500)}／${optTotal(1000)}
+            </b>
+          </td>
+        </tr>
+
+        <tr>
+          <th class="lab"></th>
+          <td class="yellow" colspan="2" style="font-size:12px;">
+            まるっとパック加入者限定特典<br>
+            2年後にDMクーポン送付（15,000円割引）
+          </td>
+          <th class="lab" colspan="3"></th>
+        </tr>
+
+        <tr>
+          <th class="lab">補償利用時の<br>実際の費用例※1</th>
+          <td class="big">${yen(info.nojimaLump)}</td>
+          <td class="big">${yen(info.nojimaMonthly * 24)}</td>
+          <th class="lab-s">補償利用時の<br>実際の費用例※1</th>
+          <td class="big">${carrierActual}</td>
+          <td class="big">${appleActual}</td>
+        </tr>
+
+        <tr>
+          <th class="lab"></th>
+          <td colspan="5" style="background:#1f56b0;color:#ffffff;font-weight:700;">
+            ※1：2年たって修理補償を利用した場合の料金を試算したもの
+          </td>
+        </tr>
+
+        <tr>
+          <th class="lab">操作不能時or紛失時</th>
+          <td colspan="5" style="background:#fff200;font-weight:800;">
+            eSIMの再発行手数料がかかります（3850円〜4950円）
+          </td>
+        </tr>
+
+      </table>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
    通話オプション
 
    基本は短時間かけ放題880円／24時間かけ放題1,980円。
@@ -1435,6 +2011,14 @@ function buildSummaryRows() {
     ["通話オプション", callLabel]
   );
 
+  if (isWarrantyApplicable()) {
+
+    rows.push(
+      ["保証", getWarrantyCost().label]
+    );
+
+  }
+
   return rows;
 
 }
@@ -1467,13 +2051,14 @@ function snapshotConsultation() {
     device: best.device,
     scenario: best.scenario,
 
-    grandTotal: best.total + callPrice,
+    grandTotal: best.total + callPrice + getWarrantyCost().monthly,
 
     priceSteps: best.priceSteps || [],
 
     twoYearTotal:
       typeof best.twoYearTotal === "number"
       ? best.twoYearTotal + callPrice * 24
+        + warrantyTwoYear(getWarrantyCost())
       : null,
     callLabel: callLabel,
 
@@ -1555,6 +2140,9 @@ const state = {
 
   callOption: null,
 
+  warrantyChoice: null,
+  warrantyOption: "none",
+
   skipCardHomeSteps: false,
 
   consultNumber: 1,
@@ -1585,6 +2173,7 @@ const STEP_TITLES = [
   "優先度",
   "プラン",
   "通話",
+  "保証",
   "診断結果",
   "まとめ"
 ];
@@ -1608,6 +2197,13 @@ function isStepSkipped(
   if (
     step === 6 &&
     hasAllCardsAlready(state.currentCards)
+  ) {
+    return true;
+  }
+
+  if (
+    step === 12 &&
+    !isWarrantyApplicable()
   ) {
     return true;
   }
@@ -1660,7 +2256,7 @@ function updateProgress() {
   /* 「まとめ」は家族コンサル終了後だけ表示 */
 
   const lastStep =
-    state.step === 13 ? 13 : 12;
+    state.step === 14 ? 14 : 13;
 
   let number = 0;
 
@@ -3683,7 +4279,11 @@ function render() {
 
         </div>
 
-        ${actions("診断を完了")}
+        ${actions(
+          isWarrantyApplicable()
+          ? "保証の案内へ"
+          : "診断を完了"
+        )}
 
       </section>
 
@@ -3693,9 +4293,142 @@ function render() {
 
   /* =========================
      STEP 12
+     保証のご案内
   ========================= */
 
   if (state.step === 12) {
+
+    const info =
+      getWarrantyInfo(state.selectedPlan);
+
+    const choices = [
+      [
+        "nojimaMonthly",
+        "ノジマ " + info.nojimaName + "（月額版）",
+        "月々" + money(info.nojimaMonthly)
+      ],
+      [
+        "nojimaLump",
+        "ノジマ " + info.nojimaName + "（一括）",
+        "一括" + money(info.nojimaLump) + "（2年間）"
+      ]
+    ];
+
+    if (info.carrierPrice) {
+
+      choices.push([
+        "carrier",
+        info.carrier.name.replace(/<br>/g, " "),
+        "月々" + money(info.carrierPrice)
+      ]);
+
+    }
+
+    choices.push(
+      [
+        "apple",
+        "AppleCare+ 盗難・紛失プラン",
+        "月々" + money(info.applePrice)
+      ],
+      [
+        "none",
+        "加入しない",
+        ""
+      ]
+    );
+
+    const isNojima =
+      state.warrantyChoice === "nojimaMonthly" ||
+      state.warrantyChoice === "nojimaLump";
+
+    const isLump =
+      state.warrantyChoice === "nojimaLump";
+
+    html = `
+
+      <section class="card">
+
+        <h2>
+          保証のご案内
+        </h2>
+
+        <p class="description">
+          ${info.device}（${state.selectedPlan.carrier}）で
+          ご加入いただける保証の比較です<br>
+          表は横にスクロールしてご覧いただけます
+        </p>
+
+        ${warrantyTableHtml(info)}
+
+        <label class="label">
+          ご加入される保証
+        </label>
+
+        <div class="choice-grid">
+
+          ${choices.map(c =>
+            makeChoice(
+              c[1],
+              c[2],
+              c[0],
+              "warrantyChoice",
+              state.warrantyChoice === c[0]
+            )
+          ).join("")}
+
+        </div>
+
+        ${
+          isNojima
+          ? `
+            <label class="label">
+              選べる安心パック（ノジマ保証加入者限定）
+            </label>
+
+            <div class="choice-grid">
+
+              ${Object.keys(WARRANTY_OPTIONS).map(key => {
+
+                const option =
+                  WARRANTY_OPTIONS[key];
+
+                return makeChoice(
+                  option.label,
+                  key === "none"
+                  ? ""
+                  : isLump
+                    ? "+" + money(option.lump) + "（2年）"
+                    : "+" + money(option.monthly) + "/月",
+                  key,
+                  "warrantyOption",
+                  state.warrantyOption === key
+                );
+
+              }).join("")}
+
+            </div>
+          `
+          : ""
+        }
+
+        <div class="note">
+          ※月額の保証は月々の合計に加算されます。
+          一括の保証は診断結果に別途表示します。
+        </div>
+
+        ${actions("診断を完了")}
+
+      </section>
+
+    `;
+  }
+
+
+  /* =========================
+     STEP 13
+  ========================= */
+
+  if (state.step === 13) {
 
     const best =
       state.selectedPlan;
@@ -3706,8 +4439,11 @@ function render() {
     const callLabel =
       getCallOptionLabel(best, state.callOption);
 
+    const warranty =
+      getWarrantyCost();
+
     const grandTotal =
-      best.total + callPrice;
+      best.total + callPrice + warranty.monthly;
 
     const summaryRows =
       buildSummaryRows();
@@ -3754,7 +4490,7 @@ function render() {
 
           <div class="total">
             ${money(grandTotal)}
-            <span>/月・概算（通信料＋端末代＋通話オプション）</span>
+            <span>/月・概算（通信料＋端末代＋通話オプション${warranty.monthly ? "＋保証" : ""}）</span>
           </div>
 
 
@@ -3817,11 +4553,33 @@ function render() {
 
           </div>
 
+          ${
+            isWarrantyApplicable()
+            ? `
+              <div class="detail">
+                <span>保証</span>
+                <b>
+                  ${warranty.label}
+                  ${
+                    warranty.monthly
+                    ? "（" + money(warranty.monthly) + "/月）"
+                    : warranty.lump
+                      ? "（一括" + money(warranty.lump) + "）"
+                      : ""
+                  }
+                </b>
+              </div>
+            `
+            : ""
+          }
+
           ${twoYearHtml(
             typeof best.twoYearTotal === "number"
-            ? best.twoYearTotal + callPrice * 24
+            ? best.twoYearTotal + callPrice * 24 + warrantyTwoYear(warranty)
             : null,
-            "通話オプション込み・概算"
+            warranty.monthly || warranty.lump
+            ? "通話オプション・保証込み・概算"
+            : "通話オプション込み・概算"
           )}
 
 
@@ -3981,11 +4739,11 @@ function render() {
 
 
   /* =========================
-     STEP 13
+     STEP 14
      家族全員分のまとめ
   ========================= */
 
-  if (state.step === 13) {
+  if (state.step === 14) {
 
     const people =
       state.finalSummaryPeople;
@@ -4474,6 +5232,9 @@ function bindEvents() {
 
             state.callOption = null;
 
+            state.warrantyChoice = null;
+            state.warrantyOption = "none";
+
             render();
 
           }
@@ -4549,6 +5310,17 @@ function bindEvents() {
         ) {
 
           state.step = 4;
+
+        }
+
+        /* 保証のページが無い場合は通話オプションへ戻る */
+
+        if (
+          state.step === 12 &&
+          !isWarrantyApplicable()
+        ) {
+
+          state.step = 11;
 
         }
 
@@ -4715,6 +5487,9 @@ function bindEvents() {
 
         state.callOption = null;
 
+        state.warrantyChoice = null;
+        state.warrantyOption = "none";
+
         if (kept) {
 
           state.currentCards = kept.currentCards;
@@ -4771,7 +5546,7 @@ function bindEvents() {
             snapshotConsultation()
           ]);
 
-        state.step = 13;
+        state.step = 14;
 
         render();
 
@@ -5260,7 +6035,36 @@ function nextStep() {
   }
 
 
+  /* STEP 12 */
+
+  if (state.step === 12) {
+
+    if (!state.warrantyChoice) {
+
+      alert(
+        "ご加入される保証を選択してください。"
+      );
+
+      return;
+
+    }
+
+  }
+
+
   state.step++;
+
+
+  /* SIMのみ・iPhone以外は保証のページを飛ばす */
+
+  if (
+    state.step === 12 &&
+    !isWarrantyApplicable()
+  ) {
+
+    state.step = 13;
+
+  }
 
 
   /*
