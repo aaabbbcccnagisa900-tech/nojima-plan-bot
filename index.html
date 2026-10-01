@@ -1131,19 +1131,6 @@ const PLANS = [
   {
     carrier: "docomo",
     name: "ドコモ MAX",
-    /*
-     * ドコモU29/U22割（学割）：29歳以下は初回適用月を含む3ヶ月、
-     * 22歳以下は7ヶ月。データ量の段階ごとに割引額が違う
-     */
-    ageDiscount: {
-      maxAge: 29,
-      amounts: [2728,3828,550],
-      months: 3,
-      label: "ドコモU29割",
-      youngMaxAge: 22,
-      youngMonths: 7,
-      youngLabel: "ドコモU22割"
-    },
     limits: [1,3,Infinity],
     prices: [5698,6798,8448],
     cardType: "docomo",
@@ -1153,6 +1140,38 @@ const PLANS = [
     familyDiscount: [0,550,1210],
     denkiDiscount: 110,
     longTermDiscount: { "10": 110, "20": 220 }
+  },
+
+  /*
+   * ドコモU29/U22割（学割）
+   * 料金表2枚目：データ量の区分（〜28GB／28〜30GB／30GB〜）ごとに
+   * 値引前金額と学割の値引額が決まっている。
+   * 29歳以下は初回適用月を含む3ヶ月、22歳以下は7ヶ月。
+   * 期間が終わったら学割の値引額だけが外れる
+   */
+
+  {
+    carrier: "docomo",
+    name: "ドコモMAX（U29/U22割）",
+    student: true,
+    studentNote: "29歳以下の方限定です（22歳以下は割引7ヶ月）",
+    maxAge: 29,
+    limits: [28,30,Infinity],
+    prices: [5698,6798,8448],
+    ageDiscount: {
+      maxAge: 29,
+      amounts: [2728,3828,550],
+      months: 3,
+      label: "ドコモU29割",
+      youngMaxAge: 22,
+      youngMonths: 7,
+      youngLabel: "ドコモU22割"
+    },
+    cardType: "docomo",
+    cardDiscount: 220,
+    cardGoldDiscount: 550,
+    homeDiscount: 1210,
+    familyDiscount: [0,550,1210]
   },
 
   {
