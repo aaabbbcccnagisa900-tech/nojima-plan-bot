@@ -141,19 +141,69 @@ button {
   color: #9ca3af;
 }
 
-.progress {
-  margin-top: 8px;
-  height: 5px;
-  background: #e5e7eb;
-  border-radius: 99px;
-  overflow: hidden;
+/* ページボタン（押すと通ったページに戻れる） */
+
+.step-nav {
+  display: flex;
+  gap: 5px;
+  margin: 8px -14px 0;
+  padding: 2px 14px 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.progress-bar {
-  height: 100%;
-  width: 0;
+.step-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.step-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px 5px 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.step-btn .step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #eef0f3;
+  font-size: 10px;
+}
+
+.step-btn.current {
   background: var(--black);
-  transition: width .25s ease;
+  border-color: var(--black);
+  color: #ffffff;
+}
+
+.step-btn.current .step-num {
+  background: #ffffff;
+  color: var(--black);
+}
+
+.step-btn:disabled {
+  background: transparent;
+  color: #b8bec7;
+  cursor: default;
+}
+
+.step-btn:disabled .step-num {
+  background: #eef0f3;
+  color: #b8bec7;
 }
 
 /* MAIN */
@@ -475,12 +525,10 @@ h2 {
     料金プラン：2026年8月1日時点（ノジマ資料より）／端末価格：2026年9月時点の概算
   </div>
 
-  <div class="progress">
-    <div
-      class="progress-bar"
-      id="progressBar"
-    ></div>
-  </div>
+  <nav
+    class="step-nav"
+    id="stepNav"
+  ></nav>
 
 </header>
 
@@ -1328,19 +1376,155 @@ const state = {
    PROGRESS
 ========================================================= */
 
+const STEP_TITLES = [
+  "お客様情報",
+  "相談内容",
+  "キャリア",
+  "データ量",
+  "家族・年齢",
+  "カード",
+  "新規カード",
+  "光・でんき",
+  "端末",
+  "優先度",
+  "プラン",
+  "通話",
+  "診断結果",
+  "まとめ"
+];
+
+/*
+ * 自動でスキップされるページ（ボタンを出さない）
+ */
+
+function isStepSkipped(
+  step
+) {
+
+  if (
+    state.skipCardHomeSteps &&
+    step >= 5 &&
+    step <= 7
+  ) {
+    return true;
+  }
+
+  if (
+    step === 6 &&
+    hasAllCardsAlready(state.currentCards)
+  ) {
+    return true;
+  }
+
+  return false;
+
+}
+
+/*
+ * 通ったページにボタンで戻る。
+ * 前の答えが変わる可能性があるため、先のページへは「次へ」で進む
+ */
+
+function jumpToStep(
+  target
+) {
+
+  saveDataInputs();
+
+  state.step = target;
+
+  if (state.step < 10) {
+
+    state.selectedPlan = null;
+
+  }
+
+  render();
+
+}
+
 function updateProgress() {
 
-  const maxStep = 12;
+  const nav =
+    document.getElementById("stepNav");
 
-  const percent =
-    Math.min(
-      100,
-      (state.step / maxStep) * 100
-    );
+  if (!nav) {
+    return;
+  }
 
-  document
-    .getElementById("progressBar")
-    .style.width = percent + "%";
+  /* 「まとめ」は家族コンサル終了後だけ表示 */
+
+  const lastStep =
+    state.step === 13 ? 13 : 12;
+
+  let number = 0;
+
+  let html = "";
+
+  for (let i = 0; i <= lastStep; i++) {
+
+    if (isStepSkipped(i)) {
+      continue;
+    }
+
+    number++;
+
+    const isCurrent =
+      i === state.step;
+
+    const canJump =
+      i < state.step;
+
+    html += `
+      <button
+        type="button"
+        class="step-btn ${isCurrent ? "current" : ""}"
+        data-step="${i}"
+        ${canJump || isCurrent ? "" : "disabled"}
+      >
+        <span class="step-num">${number}</span>
+        ${STEP_TITLES[i]}
+      </button>
+    `;
+
+  }
+
+  nav.innerHTML = html;
+
+  nav
+    .querySelectorAll(".step-btn")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        function() {
+
+          const target =
+            Number(this.dataset.step);
+
+          if (target < state.step) {
+            jumpToStep(target);
+          }
+
+        }
+      );
+
+    });
+
+  /* 今のページのボタンが見える位置までスクロール */
+
+  const current =
+    nav.querySelector(".step-btn.current");
+
+  if (current) {
+
+    nav.scrollLeft =
+      current.offsetLeft -
+      nav.clientWidth / 2 +
+      current.offsetWidth / 2;
+
+  }
+
 }
 
 
