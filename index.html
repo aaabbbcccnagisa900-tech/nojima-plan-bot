@@ -577,15 +577,24 @@ h2 {
 /* 保証の比較表（ノジマ保証基本表ベース） */
 
 .wt-wrap {
-  margin: 10px -14px 0;
-  padding: 0 14px 4px;
+  margin: 10px -10px 0;
+  padding: 0 4px 4px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
+/*
+ * 保証のページだけ画面の横幅いっぱいまで広げる
+ * （iPadでは表全体がスクロールなしで見える。スマホは横スクロール）
+ */
+
+body.wide-step .container {
+  width: min(1240px, 100%);
+}
+
 .wt {
   width: 100%;
-  min-width: 720px;
+  min-width: 700px;
   border-collapse: separate;
   border-spacing: 3px;
   background: #1f56b0;
@@ -598,7 +607,7 @@ h2 {
 
 .wt td,
 .wt th {
-  padding: 6px 4px;
+  padding: 5px 4px;
   background: #ffffff;
   vertical-align: middle;
 }
@@ -683,6 +692,18 @@ h2 {
 
 .wt .opt {
   font-size: 9px;
+}
+
+@media (min-width: 1000px) {
+
+  .wt {
+    font-size: 12px;
+  }
+
+  .wt .big {
+    font-size: 19px;
+  }
+
 }
 
 .jump-notice {
@@ -1633,7 +1654,7 @@ function warrantyTableHtml(
           <td class="name">${info.nojimaName}<br>（月額版）</td>
           <th class="lab-s">補償名</th>
           <td class="opt"><b>${carrier.name}</b></td>
-          <td class="opt"><b>AppleCare+<br>盗難・紛失プラン<br>（docomoのみ）</b></td>
+          <td class="opt"><b>AppleCare+<br>盗難・紛失プラン</b></td>
         </tr>
 
         <tr>
@@ -3049,6 +3070,11 @@ function scrollToTopIfNewStep() {
 
 function render() {
 
+  document.body.classList.toggle(
+    "wide-step",
+    state.step === 12
+  );
+
   updateMascot();
 
   updateInheritedTelop();
@@ -4377,7 +4403,7 @@ function render() {
         <p class="description">
           ${info.device}（${state.selectedPlan.carrier}）で
           ご加入いただける保証の比較です<br>
-          表は横にスクロールしてご覧いただけます
+          スマホでは表を横にスクロールしてご覧いただけます
         </p>
 
         ${warrantyTableHtml(info)}
