@@ -2454,13 +2454,15 @@ const state = {
   currentCards: [],
   newCards: [],
 
-  homeCarrier: "none",
-  newHome: "no",
-  auHomePhone: "no",
-  auDenki: "no",
+  /* 8ページ（光・でんき）も何も選んでいない状態から始める */
 
-  docomoDenki: "no",
-  docomoYears: "none",
+  homeCarrier: null,
+  newHome: null,
+  auHomePhone: null,
+  auDenki: null,
+
+  docomoDenki: null,
+  docomoYears: null,
 
   isSenior: null,
 
@@ -3672,7 +3674,10 @@ function buildInheritedSummary() {
     softbank: "SoftBank光等"
   };
 
-  if (state.homeCarrier !== "none") {
+  if (
+    state.homeCarrier &&
+    state.homeCarrier !== "none"
+  ) {
 
     parts.push(homeNames[state.homeCarrier]);
 
@@ -6618,7 +6623,7 @@ function bindEvents() {
 
         state.studentAgeBand = null;
 
-        state.docomoYears = "none";
+        state.docomoYears = null;
 
         state.devices = [];
 
@@ -6661,11 +6666,11 @@ function bindEvents() {
 
           state.currentCards = [];
           state.newCards = [];
-          state.homeCarrier = "none";
-          state.newHome = "no";
-          state.auHomePhone = "no";
-          state.auDenki = "no";
-          state.docomoDenki = "no";
+          state.homeCarrier = null;
+          state.newHome = null;
+          state.auHomePhone = null;
+          state.auDenki = null;
+          state.docomoDenki = null;
 
           state.skipCardHomeSteps = false;
 
@@ -7168,6 +7173,35 @@ function nextStep() {
     if (!state.newCards.length) {
 
       state.newCards = ["none"];
+
+    }
+
+  }
+
+
+  /* STEP 7（光・でんき）：選び忘れがないか */
+
+  if (state.step === 7) {
+
+    const required = [
+      ["homeCarrier", "今使っている光回線", true],
+      ["newHome", "光回線の新規契約について", true],
+      ["auHomePhone", "au：固定電話のセット契約について", true],
+      ["auDenki", "auでんき", true],
+      ["docomoDenki", "ドコモでんき", true],
+      ["docomoYears", "同一電話番号でのご利用期間（ドコモ）", true]
+    ];
+
+    const missing =
+      required.find(item => item[2] && !state[item[0]]);
+
+    if (missing) {
+
+      alert(
+        "「" + missing[1] + "」をお選びください。"
+      );
+
+      return;
 
     }
 
