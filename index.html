@@ -1639,7 +1639,9 @@ function planResultCard(
             ${
               plan.scenario === "mnp" || plan.scenario === "change"
               ? `<span class="tag">${
-                  plan.scenario === "mnp" ? "MNP" : "機種変更"
+                  plan.upgrade
+                  ? "アップグレード（MNP）"
+                  : plan.scenario === "mnp" ? "MNP" : "機種変更"
                 }</span>`
               : ""
             }
@@ -3198,7 +3200,13 @@ function render() {
           ${usageTags}
 
 
-          <h2>MNPでお乗り換えの場合</h2>
+          <h2>
+            ${
+              UPGRADE_RULES[state.currentCarrier]
+              ? "MNP・アップグレードの場合"
+              : "MNPでお乗り換えの場合"
+            }
+          </h2>
 
           ${renderGroups(mnpGroups, "mnp")}
 
@@ -3335,7 +3343,9 @@ function render() {
           <div class="rank">
 
             ${
-              best.scenario === "mnp"
+              best.upgrade
+              ? "アップグレード（MNP）"
+              : best.scenario === "mnp"
               ? "MNP（乗り換え）"
               : best.scenario === "change"
                 ? "機種変更"
@@ -4891,11 +4901,24 @@ function calculatePlans(
   PLANS.forEach(plan => {
 
 
+    /*
+     * アップグレード（UQ→au、Y!mobile→SoftBank）は
+     * MNP扱い（分割リセット1円が使える）。
+     * 逆のダウングレードは機種変更扱いのまま。
+     */
+
+    const upgrade =
+      isUpgrade(plan.carrier);
+
+
     /* 機種変更 */
 
     if (
       scenario === "change" &&
-      !isSameCarrier(plan.carrier)
+      (
+        !isSameCarrier(plan.carrier) ||
+        upgrade
+      )
     ) {
 
       return;
@@ -4908,12 +4931,13 @@ function calculatePlans(
      *
      * MNP＝キャリアの乗り換え。
      * 現在と同じキャリアグループの
-     * プランは対象外。
+     * プランは対象外（アップグレードを除く）。
      */
 
     if (
       scenario === "mnp" &&
-      isSameCarrier(plan.carrier)
+      isSameCarrier(plan.carrier) &&
+      !upgrade
     ) {
 
       return;
@@ -5488,6 +5512,9 @@ function calculatePlans(
       student:
         isStudentPlan,
 
+      upgrade:
+        scenario === "mnp" && upgrade,
+
       planNote:
         plan.planNote || null
 
@@ -5700,6 +5727,27 @@ function getPriorFamilyCounts() {
   });
 
   return counts;
+
+}
+
+
+/* =========================================================
+   UPGRADE
+   UQ mobile→au、Y!mobile→SoftBank への変更を
+   アップグレードと呼ぶ（逆はダウングレード）
+========================================================= */
+
+function isUpgrade(
+  planCarrier
+) {
+
+  const rule =
+    UPGRADE_RULES[state.currentCarrier];
+
+  return (
+    !!rule &&
+    planCarrier === rule.to
+  );
 
 }
 
