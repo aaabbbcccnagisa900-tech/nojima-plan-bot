@@ -305,24 +305,31 @@ main {
 .card {
   background: var(--card);
   border-radius: 20px;
-  padding: 14px;
+  padding: 18px 16px;
   box-shadow: 0 12px 35px rgba(0,0,0,.06);
   border: 1px solid rgba(0,0,0,.04);
 }
 
 h1 {
-  margin: 0 0 5px;
-  font-size: 20px;
-  line-height: 1.3;
+  margin: 0 0 8px;
+  font-size: 21px;
+  line-height: 1.35;
 }
 
 h2 {
-  margin: 0 0 5px;
-  font-size: 16px;
+  margin: 0 0 8px;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+/* カードの途中にある見出しは上に余白をとる */
+
+.card > h2:not(:first-child) {
+  margin-top: 24px;
 }
 
 .description {
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   color: var(--sub);
   font-size: 12px;
   line-height: 1.5;
@@ -388,11 +395,21 @@ h2 {
   min-width: 0;
 }
 
+/* 項目の見出し（左に線を入れて区切りをはっきりさせる） */
+
 .label {
   display: block;
-  margin: 8px 0 5px;
-  font-size: 11px;
-  font-weight: 750;
+  margin: 20px 0 8px;
+  padding-left: 9px;
+  border-left: 4px solid var(--black);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.description + .label,
+.label:first-child {
+  margin-top: 4px;
 }
 
 .data-input {
@@ -706,6 +723,72 @@ body.wide-step .container {
 
 }
 
+/* 先のページへ戻れるボタン */
+
+.step-btn.ahead {
+  border-color: #9ca3af;
+  border-style: dashed;
+}
+
+/* 11ページ：MNP／機種変更の見出し */
+
+.scenario-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+  margin: 22px 0 8px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--black);
+  color: #ffffff;
+}
+
+.scenario-title.change {
+  background: #3f4a5a;
+}
+
+.scenario-name {
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: .02em;
+}
+
+.scenario-sub {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: .8;
+}
+
+/* プランの安さランキング（枠の右上） */
+
+.result {
+  position: relative;
+}
+
+.rank-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eef0f3;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.rank-badge.top {
+  background: #f59e0b;
+  color: #111111;
+}
+
+.result.has-badge > .tags:first-of-type,
+.result.has-badge > .plan-name {
+  padding-right: 70px;
+}
+
 .jump-notice {
   margin-bottom: 8px;
   padding: 9px 11px;
@@ -781,6 +864,50 @@ body.wide-step .container {
 <div id="inheritedTelop" class="inherited-telop hidden"></div>
 
 <main id="app"></main>
+
+</div>
+
+
+<div
+  id="jumpModal"
+  class="modal hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="jumpTitle"
+>
+
+  <div class="modal-card">
+
+    <h2 id="jumpTitle"></h2>
+
+    <p class="description">
+      答えを変えると診断結果も変わるため、
+      そのあとは「次へ」で進み直していただきます。<br>
+      答えを変えなければ、上のページボタンで
+      今のページまで戻れます。
+    </p>
+
+    <div class="actions">
+
+      <button
+        type="button"
+        class="secondary"
+        id="jumpCancel"
+      >
+        キャンセル
+      </button>
+
+      <button
+        type="button"
+        class="primary"
+        id="jumpOk"
+      >
+        このページに戻る
+      </button>
+
+    </div>
+
+  </div>
 
 </div>
 
@@ -2188,6 +2315,15 @@ const state = {
 
   skipCardHomeSteps: false,
 
+  /*
+   * 一番先まで進んだページと、前に戻った時点の答え。
+   * 答えが変わっていなければ、ページボタンで先のページへ戻れる
+   */
+
+  maxStepReached: 0,
+
+  jumpSnapshot: null,
+
   consultNumber: 1,
 
   familyMemberCarrierGroups: [],
@@ -2267,23 +2403,192 @@ function isStepSkipped(
 
 let jumpNoticeStep = null;
 
+let jumpNoticeText = "";
+
+/*
+ * 診断結果に関わる答えをまとめた文字列。
+ * 前に戻った時点と比べて、答えが変わったかを判定する
+ * （お名前・電話番号は結果に関係しないので含めない）
+ */
+
+function answersSignature() {
+
+  const plan =
+    state.selectedPlan;
+
+  return JSON.stringify([
+    state.customerAge,
+    state.deviceChoice,
+    state.currentCarrier,
+    state.upgradeEligible,
+    state.averageGB,
+    state.maxGB,
+    state.familyCounts,
+    state.isSenior,
+    state.studentAgeBand,
+    state.currentCards,
+    state.newCards,
+    state.homeCarrier,
+    state.newHome,
+    state.auHomePhone,
+    state.auDenki,
+    state.docomoDenki,
+    state.docomoYears,
+    state.devices,
+    state.usagePriority,
+    plan
+      ? [plan.carrier, plan.name, plan.scenario, plan.device]
+      : null,
+    state.callOption,
+    state.warrantyChoice,
+    state.warrantyOption
+  ]);
+
+}
+
+function answersChanged() {
+
+  return (
+    state.jumpSnapshot != null &&
+    answersSignature() !== state.jumpSnapshot
+  );
+
+}
+
+/* 前に戻る直前の答えを記録（すでに記録があれば最初の記録を残す） */
+
+function rememberAnswers() {
+
+  if (state.jumpSnapshot == null) {
+
+    state.jumpSnapshot =
+      answersSignature();
+
+  }
+
+}
+
+/* 入力欄（お客様情報・データ量）の値を保存 */
+
+function saveCurrentInputs() {
+
+  if (state.step === 0) {
+    saveCustomerInputs();
+  }
+
+  saveDataInputs();
+
+}
+
+/* ページボタン：前のページは確認してから戻る */
+
+let pendingJumpTarget = null;
+
+function askJumpBack(
+  target
+) {
+
+  pendingJumpTarget = target;
+
+  document.getElementById("jumpTitle").textContent =
+    "「" + STEP_TITLES[target] + "」のページに戻りますか？";
+
+  document
+    .getElementById("jumpModal")
+    .classList.remove("hidden");
+
+}
+
+function closeJumpModal() {
+
+  pendingJumpTarget = null;
+
+  document
+    .getElementById("jumpModal")
+    .classList.add("hidden");
+
+}
+
 function jumpToStep(
   target
 ) {
 
-  saveDataInputs();
+  rememberAnswers();
+
+  saveCurrentInputs();
 
   state.step = target;
 
   jumpNoticeStep = target;
 
-  if (state.step < 10) {
+  jumpNoticeText =
+    "前のページに戻りました。<br>" +
+    "答えを変えなければ、上のページボタンで先のページへ戻れます。" +
+    "答えを変えた場合は「次へ」で進み直してください。";
 
-    state.selectedPlan = null;
+  render();
+
+}
+
+/* ページボタン：答えが変わっていなければ先のページへ戻る */
+
+function jumpForward(
+  target
+) {
+
+  saveCurrentInputs();
+
+  if (answersChanged()) {
+
+    jumpNoticeStep = state.step;
+
+    jumpNoticeText =
+      "答えが変わったため、先のページへは「次へ」で進んでください。";
+
+    render();
+
+    return;
 
   }
 
+  state.step = target;
+
+  jumpNoticeStep = null;
+
   render();
+
+}
+
+function setupJumpModal() {
+
+  document
+    .getElementById("jumpCancel")
+    .addEventListener("click", closeJumpModal);
+
+  document
+    .getElementById("jumpOk")
+    .addEventListener("click", function() {
+
+      const target =
+        pendingJumpTarget;
+
+      closeJumpModal();
+
+      if (target !== null) {
+        jumpToStep(target);
+      }
+
+    });
+
+  document
+    .getElementById("jumpModal")
+    .addEventListener("click", function(e) {
+
+      if (e.target === this) {
+        closeJumpModal();
+      }
+
+    });
 
 }
 
@@ -2299,7 +2604,13 @@ function updateProgress() {
   /* 「まとめ」は家族コンサル終了後だけ表示 */
 
   const lastStep =
-    state.step === 14 ? 14 : 13;
+    state.step === 14 || state.maxStepReached === 14
+    ? 14
+    : 13;
+
+  const canGoAhead =
+    state.jumpSnapshot != null &&
+    !answersChanged();
 
   let number = 0;
 
@@ -2316,15 +2627,20 @@ function updateProgress() {
     const isCurrent =
       i === state.step;
 
-    const canJump =
+    const canJumpBack =
       i < state.step;
+
+    const canJumpAhead =
+      canGoAhead &&
+      i > state.step &&
+      i <= state.maxStepReached;
 
     html += `
       <button
         type="button"
-        class="step-btn ${isCurrent ? "current" : ""}"
+        class="step-btn ${isCurrent ? "current" : ""} ${canJumpAhead ? "ahead" : ""}"
         data-step="${i}"
-        ${canJump || isCurrent ? "" : "disabled"}
+        ${canJumpBack || canJumpAhead || isCurrent ? "" : "disabled"}
       >
         <span class="step-num">${number}</span>
         ${STEP_TITLES[i]}
@@ -2347,7 +2663,9 @@ function updateProgress() {
             Number(this.dataset.step);
 
           if (target < state.step) {
-            jumpToStep(target);
+            askJumpBack(target);
+          } else if (target > state.step) {
+            jumpForward(target);
           }
 
         }
@@ -2640,7 +2958,8 @@ function actions(text = "次へ") {
 function planResultCard(
   plan,
   rank,
-  showSelectButton = true
+  showSelectButton = true,
+  priceRank = null
 ) {
 
   const isSelected =
@@ -2652,7 +2971,13 @@ function planResultCard(
 
   return `
 
-    <div class="result">
+    <div class="result ${priceRank ? "has-badge" : ""}">
+
+      ${
+        priceRank
+        ? `<div class="rank-badge ${priceRank === 1 ? "top" : ""}">安さ ${priceRank}位</div>`
+        : ""
+      }
 
       ${
         rank
@@ -3069,6 +3394,9 @@ function scrollToTopIfNewStep() {
 }
 
 function render() {
+
+  state.maxStepReached =
+    Math.max(state.maxStepReached || 0, state.step);
 
   document.body.classList.toggle(
     "wide-step",
@@ -4182,6 +4510,19 @@ function render() {
       const changeGroups =
         getCandidateGroupsForScenario("change");
 
+      /*
+       * MNP・機種変更を合わせた2年間の総額の安さランキング
+       * （各プランの枠の右上に表示）
+       */
+
+      const rankedPlans =
+        mnpGroups.concat(changeGroups)
+          .flatMap(group => group.candidates)
+          .sort((a,b) => a.twoYearTotal - b.twoYearTotal);
+
+      const priceRankOf = plan =>
+        rankedPlans.indexOf(plan) + 1;
+
       const renderGroups = (groups, scenarioKey) => {
 
         return groups.map(group => {
@@ -4202,7 +4543,9 @@ function render() {
             }
             ${
               shown.length
-              ? shown.map(plan => planResultCard(plan, null)).join("")
+              ? shown.map(
+                  plan => planResultCard(plan, null, true, priceRankOf(plan))
+                ).join("")
               : `<p class="description">条件に合う候補がありません。</p>`
             }
           `;
@@ -4227,19 +4570,25 @@ function render() {
 
           <p class="description">
             2つのパターンの料金をご用意いたしました<br>
-            スタッフと見比べながらお選びください
+            スタッフと見比べながらお選びください<br>
+            右上の順位は、両方を合わせた2年間の総額が安い順です
           </p>
 
           ${usageTags}
 
 
-          <h2>
-            ${
-              UPGRADE_RULES[state.currentCarrier]
-              ? "MNP・アップグレードの場合"
-              : "MNPでお乗り換えの場合"
-            }
-          </h2>
+          <div class="scenario-title">
+            <span class="scenario-name">
+              ${
+                UPGRADE_RULES[state.currentCarrier]
+                ? "MNP・アップグレードの場合"
+                : "MNPでお乗り換えの場合"
+              }
+            </span>
+            <span class="scenario-sub">
+              端末代：分割リセット
+            </span>
+          </div>
 
           ${renderGroups(mnpGroups, "mnp")}
 
@@ -4250,7 +4599,14 @@ function render() {
           }
 
 
-          <h2>機種変更の場合</h2>
+          <div class="scenario-title change">
+            <span class="scenario-name">
+              機種変更の場合
+            </span>
+            <span class="scenario-sub">
+              端末代：通常分割（48回）
+            </span>
+          </div>
 
           ${renderGroups(changeGroups, "change")}
 
@@ -4961,10 +5317,7 @@ function render() {
 
     html = `
       <div class="jump-notice">
-        前のページに戻りました。<br>
-        答えを変えると診断結果も変わるため、
-        ここから先のページへは「次へ」で進んでください。
-        入力済みの答えは残っています。
+        ${jumpNoticeText}
       </div>
     ` + html;
 
@@ -5324,6 +5677,8 @@ function bindEvents() {
          * 現在入力されている値を保存しておく。
          */
 
+        rememberAnswers();
+
         saveDataInputs();
 
         state.step =
@@ -5373,16 +5728,9 @@ function bindEvents() {
         }
 
         /*
-         * Step9より前に戻った場合、
-         * 選択済みプランは条件変更で
-         * ズレる可能性があるためクリアする
+         * 選択済みプランは、答えを変えて「次へ」を
+         * 押したときにクリアする（nextStep）
          */
-
-        if (state.step < 10) {
-
-          state.selectedPlan = null;
-
-        }
 
         render();
 
@@ -5537,6 +5885,9 @@ function bindEvents() {
 
         state.warrantyChoice = null;
         state.warrantyOption = "none";
+
+        state.maxStepReached = 0;
+        state.jumpSnapshot = null;
 
         if (kept) {
 
@@ -5774,6 +6125,38 @@ function saveDataInputs() {
 
 
 /* =========================================================
+   お客様情報（Step0）の入力値を保存
+========================================================= */
+
+function saveCustomerInputs() {
+
+  const nameInput =
+    document.getElementById("customerNameInput");
+
+  const phoneInput =
+    document.getElementById("customerPhoneInput");
+
+  const ageInput =
+    document.getElementById("customerAgeInput");
+
+  if (nameInput) {
+    state.customerName = nameInput.value.trim();
+  }
+
+  if (phoneInput) {
+    state.customerPhone =
+      toHalfWidthNumber(phoneInput.value.trim());
+  }
+
+  if (ageInput) {
+    state.customerAge =
+      toHalfWidthNumber(ageInput.value.trim());
+  }
+
+}
+
+
+/* =========================================================
    NEXT STEP
 ========================================================= */
 
@@ -5784,28 +6167,7 @@ function nextStep() {
 
   if (state.step === 0) {
 
-    const nameInput =
-      document.getElementById("customerNameInput");
-
-    const phoneInput =
-      document.getElementById("customerPhoneInput");
-
-    const ageInput =
-      document.getElementById("customerAgeInput");
-
-    if (nameInput) {
-      state.customerName = nameInput.value.trim();
-    }
-
-    if (phoneInput) {
-      state.customerPhone =
-        toHalfWidthNumber(phoneInput.value.trim());
-    }
-
-    if (ageInput) {
-      state.customerAge =
-        toHalfWidthNumber(ageInput.value.trim());
-    }
+    saveCustomerInputs();
 
     /* 年齢が入力されていれば60歳以上限定プランの対象を自動で選ぶ */
 
@@ -6096,6 +6458,29 @@ function nextStep() {
       return;
 
     }
+
+  }
+
+
+  /*
+   * 前に戻って答えを変えた場合、
+   * 先のページ（選んだプランなど）はやり直しにする
+   */
+
+  if (answersChanged()) {
+
+    if (state.step < 10) {
+
+      state.selectedPlan = null;
+      state.callOption = null;
+      state.warrantyChoice = null;
+      state.warrantyOption = "none";
+
+    }
+
+    state.maxStepReached = state.step;
+
+    state.jumpSnapshot = null;
 
   }
 
@@ -7675,6 +8060,8 @@ function setupFeedback() {
 (function initApp() {
 
   setupFeedback();
+
+  setupJumpModal();
 
   const restored =
     loadStateFromStorage();
