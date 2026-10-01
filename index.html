@@ -484,6 +484,17 @@ h2 {
   color: #fff;
 }
 
+.jump-notice {
+  margin-bottom: 8px;
+  padding: 9px 11px;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .hidden {
   display: none;
 }
@@ -1425,6 +1436,13 @@ function isStepSkipped(
  * 前の答えが変わる可能性があるため、先のページへは「次へ」で進む
  */
 
+/*
+ * ボタンで戻ったページでだけ注意書きを出す
+ * （「次へ」「戻る」で移動したら消える）
+ */
+
+let jumpNoticeStep = null;
+
 function jumpToStep(
   target
 ) {
@@ -1432,6 +1450,8 @@ function jumpToStep(
   saveDataInputs();
 
   state.step = target;
+
+  jumpNoticeStep = target;
 
   if (state.step < 10) {
 
@@ -3942,6 +3962,26 @@ function render() {
     `;
   }
 
+
+  if (
+    jumpNoticeStep !== null &&
+    jumpNoticeStep === state.step
+  ) {
+
+    html = `
+      <div class="jump-notice">
+        前のページに戻りました。<br>
+        答えを変えると診断結果も変わるため、
+        ここから先のページへは「次へ」で進んでください。
+        入力済みの答えは残っています。
+      </div>
+    ` + html;
+
+  } else {
+
+    jumpNoticeStep = null;
+
+  }
 
   app.innerHTML = html;
 
