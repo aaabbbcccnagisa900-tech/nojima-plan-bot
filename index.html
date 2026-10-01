@@ -3773,15 +3773,66 @@ function inheritedDetailHtml() {
 
   if (state.skipCardHomeSteps) {
 
+    /*
+     * 新規が決まっているもの：ご家族の最終プランで実際に適用された
+     *   ⚠️（新規発行・新規契約）の割引
+     * 新規の意思があるもの：新規発行・検討すると答えたが、
+     *   まだどのご家族のプランでも適用されていないもの
+     */
+
+    const decided =
+      Array.from(new Set(
+        state.consultationHistory
+          .filter((snapshot, i) => snapshot && i !== state.currentPerson)
+          .flatMap(snapshot => snapshot.todoLabels || [])
+      ));
+
+    const isDecided = test =>
+      decided.some(test);
+
+    const intentions = [];
+
+    state.newCards
+      .filter(id => id !== "none")
+      .forEach(id => {
+
+        const name =
+          CARD_LABELS[id] || id;
+
+        if (!isDecided(label => label.startsWith(name))) {
+          intentions.push(name + "の新規発行");
+        }
+
+      });
+
+    if (
+      state.newHome === "yes" &&
+      !isDecided(label => /光セット|スマートバリュー|自宅セット割（▲/.test(label))
+    ) {
+      intentions.push("光回線の新規契約");
+    }
+
+    const listRows = (items, empty) =>
+      items.length
+      ? items.map(item => `
+          <div class="detail">
+            <span>${item}</span>
+            <b></b>
+          </div>
+        `).join("")
+      : `<div class="detail"><span>${empty}</span><b></b></div>`;
+
     html +=
-      `<div class="telop-section">引き継いでいる情報</div>` +
+      `<div class="telop-section">新規が決まっているもの（ご家族のプランで適用済み）</div>` +
+      listRows(decided, "なし") +
+      `<div class="telop-section">新規の意思があるもの（まだ確定していない）</div>` +
+      listRows(intentions, "なし") +
+      `<div class="telop-section">すでにご契約中のもの</div>` +
       row("お使いのカード", cardListText(state.currentCards)) +
-      row("新規発行するカード", cardListText(state.newCards)) +
       row(
         "現在契約中の光回線",
         { docomo: "ドコモ光", au: "auひかり等", softbank: "SoftBank光等", none: "なし・その他" }[state.homeCarrier]
       ) +
-      row("光回線の新規契約", state.newHome === "yes" ? "検討する" : "変更しない") +
       row("au：固定電話", state.auHomePhone === "yes" ? "契約している/する予定" : "契約していない") +
       row("auでんき", state.auDenki === "yes" ? "利用中" : "利用していない") +
       row("ドコモでんき", state.docomoDenki === "yes" ? "利用中" : "利用していない");
