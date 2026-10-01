@@ -1200,7 +1200,9 @@ const UPGRADE_RULES = {
  * price：端末総額（1万円単位のおおよそ）。
  * ここを書き換えるだけで金額を更新できる。
  * 通常分割は price ÷ 48回 で概算。
- * 分割リセット（MNP）は前半24回が1円のため reset:1 固定。
+ * reset：分割リセット（MNP）の前半24回の月額。
+ * 無印モデルは1円。それ以外は1円にならないため、
+ * 実際の金額がわかるまで一旦 月1,000円 の概算にしている。
  */
 
 const DEVICE_INSTALLMENT_MONTHS = 48;
@@ -1263,7 +1265,7 @@ const DEVICES = {
 
   "iPhone 17e": {
     price: 100000,
-    reset: 1
+    reset: 1000
   },
 
   "iPhone 16": {
@@ -1271,14 +1273,34 @@ const DEVICES = {
     reset: 1
   },
 
+  "iPhone 16e": {
+    price: 100000,
+    reset: 1000
+  },
+
+  "iPhone Air": {
+    price: 190000,
+    reset: 1000
+  },
+
   "iPhone 17 Pro": {
     price: 190000,
-    reset: 1
+    reset: 1000
+  },
+
+  "iPhone 18 Pro": {
+    price: 220000,
+    reset: 1000
+  },
+
+  "iPhone 18 Pro Max": {
+    price: 240000,
+    reset: 1000
   },
 
   "Pixel 10a": {
     price: 80000,
-    reset: 1
+    reset: 1000
   },
 
   "Pixel 11": {
@@ -3926,7 +3948,7 @@ function render() {
             どちらがお得かはこの後の画面で
             金額を並べて比較できます。<br><br>
 
-            MNP：分割リセット（前半24回が実質1円/月、返却で残額免除）<br>
+            MNP：分割リセット（無印モデルは前半24回が実質1円/月、それ以外は概算で月1,000円。返却で残額免除）<br>
             機種変更：通常分割（端末代を月々に加算）<br><br>
 
             ※端末価格・施策は時期によって変動するため、
