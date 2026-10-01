@@ -789,6 +789,37 @@ body.wide-step .container {
   padding-right: 70px;
 }
 
+/* 家族コンサル：お客様ごとのボタン（キャラクターの左） */
+
+.person-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.person-btn {
+  max-width: 160px;
+  padding: 6px 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.person-btn.current {
+  background: var(--black);
+  border-color: var(--black);
+  color: #ffffff;
+  cursor: default;
+}
+
 .jump-notice {
   margin-bottom: 8px;
   padding: 9px 11px;
@@ -2330,9 +2361,177 @@ const state = {
 
   consultationHistory: [],
 
-  finalSummaryPeople: []
+  finalSummaryPeople: [],
+
+  /*
+   * 家族コンサル：お客様ごとの入力内容をまるごと保存する
+   * （キャラクター左のボタンで、前の人の結果に戻れるように）
+   */
+
+  people: [],
+
+  currentPerson: 0
 
 };
+
+
+/* お客様ごとに保存する項目 */
+
+const PERSON_KEYS = [
+  "step",
+  "customerName",
+  "customerPhone",
+  "customerAge",
+  "deviceChoice",
+  "selectedPlan",
+  "currentCarrier",
+  "upgradeEligible",
+  "averageGB",
+  "maxGB",
+  "familyCounts",
+  "currentCards",
+  "newCards",
+  "homeCarrier",
+  "newHome",
+  "auHomePhone",
+  "auDenki",
+  "docomoDenki",
+  "docomoYears",
+  "isSenior",
+  "studentAgeBand",
+  "devices",
+  "usagePriority",
+  "resultsExpanded",
+  "callOption",
+  "warrantyChoice",
+  "warrantyOption",
+  "skipCardHomeSteps",
+  "maxStepReached",
+  "jumpSnapshot"
+];
+
+function clonePersonValue(
+  value
+) {
+
+  /* structuredClone は Infinity（無制限）もそのまま保てる */
+
+  if (typeof structuredClone === "function") {
+    return structuredClone(value);
+  }
+
+  return JSON.parse(
+    JSON.stringify(value === undefined ? null : value),
+    (key, v) => key === "limit" && v === null ? Infinity : v
+  );
+
+}
+
+/* 診断を最後（診断結果）まで終えているか */
+
+function isPersonFinished() {
+
+  return (
+    !!state.selectedPlan &&
+    (state.maxStepReached || 0) >= 13
+  );
+
+}
+
+/*
+ * 今のお客様の入力内容を保存する。
+ * 診断結果まで終えていれば、まとめ用の結果と家族割の集計も更新する
+ */
+
+function storeCurrentPerson() {
+
+  const index =
+    state.currentPerson || 0;
+
+  const saved = {};
+
+  PERSON_KEYS.forEach(key => {
+    saved[key] = clonePersonValue(state[key]);
+  });
+
+  state.people[index] = saved;
+
+  if (isPersonFinished()) {
+
+    state.consultationHistory[index] =
+      snapshotConsultation();
+
+    state.familyMemberCarrierGroups[index] =
+      carrierGroup(state.selectedPlan.carrier);
+
+  } else {
+
+    state.consultationHistory[index] = null;
+    state.familyMemberCarrierGroups[index] = null;
+
+  }
+
+}
+
+/* 別のお客様に切り替える（終えている人は診断結果のページへ） */
+
+function switchPerson(
+  index
+) {
+
+  if (index === state.currentPerson) {
+    return;
+  }
+
+  saveCurrentInputs();
+
+  storeCurrentPerson();
+
+  const saved =
+    state.people[index];
+
+  if (!saved) {
+    return;
+  }
+
+  PERSON_KEYS.forEach(key => {
+    state[key] = clonePersonValue(saved[key]);
+  });
+
+  state.currentPerson = index;
+
+  state.consultNumber = index + 1;
+
+  if (isPersonFinished()) {
+    state.step = 13;
+  }
+
+  jumpNoticeStep = null;
+
+  render();
+
+}
+
+/* 今のお客様以外で、診断を終えている人の数 */
+
+function otherFinishedCount() {
+
+  return state.consultationHistory.filter(
+    (snapshot, i) => snapshot && i !== state.currentPerson
+  ).length;
+
+}
+
+/* 何人分のお客様がいるか（今の人を含む） */
+
+function personCount() {
+
+  return Math.max(
+    state.people.length,
+    (state.currentPerson || 0) + 1
+  );
+
+}
 
 
 /* =========================================================
@@ -3334,9 +3533,48 @@ function updateCustomerBanner() {
     return;
   }
 
+  const total =
+    personCount();
+
+  /* 2人目以降：お客様ごとのボタン（名前が未入力なら「〇人目」） */
+
+  let personNavHtml = "";
+
+  if (total > 1) {
+
+    personNavHtml =
+      `<div class="person-nav">` +
+      Array.from({ length: total }, (_, i) => {
+
+        const name =
+          i === state.currentPerson
+          ? state.customerName
+          : (state.people[i] && state.people[i].customerName);
+
+        const label =
+          name
+          ? escapeHtml(name) + " 様"
+          : (i + 1) + "人目";
+
+        return `
+          <button
+            type="button"
+            class="person-btn ${i === state.currentPerson ? "current" : ""}"
+            data-person="${i}"
+          >
+            ${label}
+          </button>
+        `;
+
+      }).join("") +
+      `</div>`;
+
+  }
+
   if (state.step === 0) {
 
-    banner.innerHTML = "";
+    banner.innerHTML = personNavHtml;
+    bindPersonButtons(banner);
     return;
 
   }
@@ -3365,7 +3603,30 @@ function updateCustomerBanner() {
     : "";
 
   banner.innerHTML =
-    countHtml + nameHtml + subHtml;
+    total > 1
+    ? personNavHtml + subHtml
+    : countHtml + nameHtml + subHtml;
+
+  bindPersonButtons(banner);
+
+}
+
+function bindPersonButtons(
+  container
+) {
+
+  container
+    .querySelectorAll(".person-btn")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        function() {
+          switchPerson(Number(this.dataset.person));
+        }
+      );
+
+    });
 
 }
 
@@ -5123,7 +5384,7 @@ function render() {
         </div>
 
         ${
-          state.consultationHistory.length > 0
+          otherFinishedCount() > 0
           ? `
             <button
               type="button"
@@ -5823,29 +6084,18 @@ function bindEvents() {
         const inherit =
           this.dataset.inherit === "yes";
 
-        if (state.selectedPlan) {
+        storeCurrentPerson();
 
-          const decidedGroup =
-            carrierGroup(state.selectedPlan.carrier);
+        /* 新しいお客様は一番うしろに追加する */
 
-          if (decidedGroup) {
-
-            state.familyMemberCarrierGroups.push(
-              decidedGroup
-            );
-
-          }
-
-          state.consultationHistory.push(
-            snapshotConsultation()
-          );
-
-        }
+        state.currentPerson =
+          state.people.length;
 
         const priorCounts =
           getPriorFamilyCounts();
 
-        state.consultNumber++;
+        state.consultNumber =
+          state.currentPerson + 1;
 
         const kept =
           inherit
@@ -5961,10 +6211,10 @@ function bindEvents() {
       "click",
       function() {
 
+        storeCurrentPerson();
+
         state.finalSummaryPeople =
-          state.consultationHistory.concat([
-            snapshotConsultation()
-          ]);
+          state.consultationHistory.filter(Boolean);
 
         state.step = 14;
 
@@ -7385,9 +7635,13 @@ function getPriorFamilyCounts() {
     softbank: 0
   };
 
-  state.familyMemberCarrierGroups.forEach(group => {
+  state.familyMemberCarrierGroups.forEach((group, i) => {
 
-    if (counts[group] !== undefined) {
+    if (
+      i !== state.currentPerson &&
+      group &&
+      counts[group] !== undefined
+    ) {
       counts[group]++;
     }
 
@@ -8106,6 +8360,12 @@ function setupFeedback() {
     if (wantsRestore) {
 
       Object.assign(state, restored);
+
+      /* 以前の保存データには「何人目か」の番号がないので補う */
+
+      if (restored.currentPerson === undefined) {
+        state.currentPerson = (state.consultNumber || 1) - 1;
+      }
 
     } else {
 
