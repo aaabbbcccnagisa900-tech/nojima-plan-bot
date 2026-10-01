@@ -1739,6 +1739,17 @@ const WARRANTY_OPTIONS = {
   double: { label: "バッテリー＋データ復旧", monthly: 1000, lump: 44000 }
 };
 
+/* 端末を購入する相談か（端末を変えたい・新規契約） */
+
+function hasDevice() {
+
+  return (
+    state.deviceChoice === "device" ||
+    state.deviceChoice === "new"
+  );
+
+}
+
 function getWarrantyInfo(
   plan
 ) {
@@ -1746,7 +1757,7 @@ function getWarrantyInfo(
   if (
     !plan ||
     !plan.device ||
-    state.deviceChoice !== "device"
+    !hasDevice()
   ) {
     return null;
   }
@@ -2266,9 +2277,11 @@ function buildSummaryRows() {
   const rows = [
 
     ["相談内容",
-      state.deviceChoice === "sim"
-      ? "SIMのみ乗り換え"
-      : "端末を変えたい"
+      {
+        sim: "SIMのみ乗り換え",
+        device: "端末を変えたい",
+        new: "新規契約"
+      }[state.deviceChoice] || "-"
     ],
 
     ["現在のキャリア", state.currentCarrier || "-"],
@@ -2314,7 +2327,7 @@ function buildSummaryRows() {
 
   }
 
-  if (state.deviceChoice === "device") {
+  if (hasDevice()) {
 
     rows.push(
       ["選んだ端末", best.device || "-"]
@@ -2458,7 +2471,8 @@ const state = {
   resultsExpanded: {
     sim: false,
     mnp: false,
-    change: false
+    change: false,
+    new: false
   },
 
   callOption: null,
@@ -2704,6 +2718,13 @@ function isStepSkipped(
   if (
     step === 12 &&
     !isWarrantyApplicable()
+  ) {
+    return true;
+  }
+
+  if (
+    step === 2 &&
+    state.deviceChoice === "new"
   ) {
     return true;
   }
@@ -3125,7 +3146,10 @@ function isDebutEligible(
   scenario
 ) {
 
-  if (state.currentCarrier === "その他") {
+  if (
+    state.currentCarrier === "その他" ||
+    scenario === "new"
+  ) {
     return true;
   }
 
@@ -3307,15 +3331,17 @@ function planResultCard(
       }
 
       ${
-        (plan.scenario === "mnp" || plan.scenario === "change" || plan.device)
+        (plan.scenario === "mnp" || plan.scenario === "change" || plan.scenario === "new" || plan.device)
         ? `
           <div class="tags">
             ${
-              plan.scenario === "mnp" || plan.scenario === "change"
+              plan.scenario === "mnp" || plan.scenario === "change" || plan.scenario === "new"
               ? `<span class="tag">${
                   plan.upgrade
                   ? "アップグレード（MNP）"
-                  : plan.scenario === "mnp" ? "MNP" : "機種変更"
+                  : plan.scenario === "mnp"
+                    ? "MNP"
+                    : plan.scenario === "new" ? "新規" : "機種変更"
                 }</span>`
               : ""
             }
@@ -4100,6 +4126,14 @@ function render() {
             "device",
             "deviceChoice",
             state.deviceChoice === "device"
+          )}
+
+          ${makeChoice(
+            "新規契約",
+            "新しく電話番号を作る（端末購入）",
+            "new",
+            "deviceChoice",
+            state.deviceChoice === "new"
           )}
 
         </div>
@@ -5061,6 +5095,89 @@ function render() {
 
       `;
 
+    } else if (state.deviceChoice === "new") {
+
+      const showDeviceHeading =
+        state.devices.length > 1;
+
+      const newGroups =
+        getCandidateGroupsForScenario("new");
+
+      const rankedPlans =
+        newGroups
+          .flatMap(group => group.candidates)
+          .sort((a,b) => a.twoYearTotal - b.twoYearTotal);
+
+      const newHasMore =
+        newGroups.some(g => g.candidates.length > 3);
+
+      html = `
+
+        <section class="card">
+
+          <h2>
+            新規契約のおすすめプラン
+          </h2>
+
+          <p class="description">
+            ご希望のプランをお選びください<br>
+            右上の順位は、2年間の総額が安い順です
+          </p>
+
+          ${usageTags}
+
+          <div class="scenario-title">
+            <span class="scenario-name">
+              新規契約の場合
+            </span>
+            <span class="scenario-sub">
+              端末代：通常分割（48回）
+            </span>
+          </div>
+
+          ${newGroups.map(group => {
+
+            const shown =
+              group.candidates.slice(
+                0,
+                state.resultsExpanded.new ? group.candidates.length : 3
+              );
+
+            return `
+              ${
+                showDeviceHeading
+                ? `<label class="label">${group.device}</label>`
+                : ""
+              }
+              ${
+                shown.length
+                ? shown.map(
+                    plan => planResultCard(plan, null, true, rankedPlans.indexOf(plan) + 1)
+                  ).join("")
+                : `<p class="description">条件に合う候補がありません。</p>`
+              }
+            `;
+
+          }).join("")}
+
+          ${
+            newHasMore
+            ? moreButton("new")
+            : ""
+          }
+
+          <div class="price-alert">
+            この金額はあくまで概算です。<br>
+            端末価格・頭金・施策ポイント・料金改定により変動します。<br>
+            最終的な金額は、必ずこの後スタッフと一緒にご確認ください。
+          </div>
+
+          ${actions("通話オプションを選ぶ")}
+
+        </section>
+
+      `;
+
     } else {
 
       const showDeviceHeading =
@@ -5455,7 +5572,9 @@ function render() {
               ? "MNP（乗り換え）"
               : best.scenario === "change"
                 ? "機種変更"
-                : "ご案内内容"
+                : best.scenario === "new"
+                  ? "新規契約"
+                  : "ご案内内容"
             }
 
           </div>
@@ -6293,6 +6412,17 @@ function bindEvents() {
 
         }
 
+        /* 新規契約は「今のキャリア」のページを飛ばして戻る */
+
+        if (
+          state.step === 2 &&
+          state.deviceChoice === "new"
+        ) {
+
+          state.step = 1;
+
+        }
+
         /* 保証のページが無い場合は通話オプションへ戻る */
 
         if (
@@ -6444,7 +6574,8 @@ function bindEvents() {
         state.resultsExpanded = {
           sim: false,
           mnp: false,
-          change: false
+          change: false,
+          new: false
         };
 
         state.callOption = null;
@@ -7052,6 +7183,21 @@ function nextStep() {
 
 
   state.step++;
+
+
+  /* 新規契約は「今のキャリア」のページを飛ばす */
+
+  if (
+    state.step === 2 &&
+    state.deviceChoice === "new"
+  ) {
+
+    state.currentCarrier = null;
+    state.upgradeEligible = null;
+
+    state.step = 3;
+
+  }
 
 
   /* SIMのみ・iPhone以外は保証のページを飛ばす */
@@ -7786,6 +7932,12 @@ function getCandidates() {
 
   }
 
+  if (state.deviceChoice === "new") {
+
+    return getCandidatesForScenario("new");
+
+  }
+
 
   const result = [];
 
@@ -7862,9 +8014,11 @@ function getCandidateGroups() {
   return state.devices.map(device => {
 
     const list =
-      calculatePlans("mnp", device).concat(
-        calculatePlans("change", device)
-      );
+      state.deviceChoice === "new"
+      ? calculatePlans("new", device)
+      : calculatePlans("mnp", device).concat(
+          calculatePlans("change", device)
+        );
 
     list.sort(
       (a,b) => a.twoYearTotal - b.twoYearTotal
@@ -8435,7 +8589,7 @@ function feedbackContextText() {
 
   if (state.deviceChoice) {
     parts.push(
-      state.deviceChoice === "sim" ? "SIMのみ" : "端末変更"
+      { sim: "SIMのみ", device: "端末変更", new: "新規契約" }[state.deviceChoice]
     );
   }
 
@@ -8450,7 +8604,7 @@ function feedbackContextText() {
   }
 
   if (
-    state.deviceChoice === "device" &&
+    hasDevice() &&
     state.devices.length
   ) {
     parts.push("端末：" + state.devices.join("・"));
