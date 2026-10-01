@@ -216,6 +216,43 @@ button {
   color: #333;
   font-size: 11px;
   line-height: 1.6;
+  cursor: pointer;
+}
+
+/* タップで詳細を開閉 */
+
+.telop-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.telop-toggle {
+  flex: 0 0 auto;
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.telop-detail {
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px solid #d1d5db;
+}
+
+.telop-detail .detail {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 0;
+  font-size: 12px;
+}
+
+.telop-section {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #111111;
 }
 
 .logo {
@@ -3530,8 +3567,91 @@ function updateInheritedTelop() {
 
   telop.classList.remove("hidden");
 
-  telop.innerHTML =
-    lines.join("　/　");
+  telop.innerHTML = `
+    <div class="telop-head">
+      <span>${lines.join("　/　")}</span>
+      <span class="telop-toggle">
+        ${telopExpanded ? "閉じる ▲" : "タップで詳細 ▼"}
+      </span>
+    </div>
+    ${telopExpanded ? inheritedDetailHtml() : ""}
+  `;
+
+}
+
+/* 引き継ぎ情報の詳細（タップで開く） */
+
+let telopExpanded = false;
+
+function inheritedDetailHtml() {
+
+  const row = (label, value) => `
+    <div class="detail">
+      <span>${label}</span>
+      <b>${value}</b>
+    </div>
+  `;
+
+  let html =
+    `<div class="telop-detail">`;
+
+  if (state.skipCardHomeSteps) {
+
+    html +=
+      `<div class="telop-section">引き継いでいる情報</div>` +
+      row("お使いのカード", cardListText(state.currentCards)) +
+      row("新規発行するカード", cardListText(state.newCards)) +
+      row(
+        "現在契約中の光回線",
+        { docomo: "ドコモ光", au: "auひかり等", softbank: "SoftBank光等", none: "なし・その他" }[state.homeCarrier]
+      ) +
+      row("光回線の新規契約", state.newHome === "yes" ? "検討する" : "変更しない") +
+      row("au：固定電話", state.auHomePhone === "yes" ? "契約している/する予定" : "契約していない") +
+      row("auでんき", state.auDenki === "yes" ? "利用中" : "利用していない") +
+      row("ドコモでんき", state.docomoDenki === "yes" ? "利用中" : "利用していない");
+
+  }
+
+  /* ほかのご家族の決定内容（家族割の判定の参考に） */
+
+  const others =
+    state.consultationHistory
+      .map((snapshot, i) => ({ snapshot, i }))
+      .filter(x => x.snapshot && x.i !== state.currentPerson);
+
+  if (others.length) {
+
+    html +=
+      `<div class="telop-section">ご家族の決定済みプラン</div>` +
+      others.map(x =>
+        row(
+          x.snapshot.name
+          ? escapeHtml(x.snapshot.name) + " 様"
+          : (x.i + 1) + "人目",
+          x.snapshot.carrier + " " + x.snapshot.planName
+          + (x.snapshot.device ? "（" + x.snapshot.device + "）" : "")
+        )
+      ).join("");
+
+  }
+
+  html += `</div>`;
+
+  return html;
+
+}
+
+function setupInheritedTelop() {
+
+  document
+    .getElementById("inheritedTelop")
+    .addEventListener("click", function() {
+
+      telopExpanded = !telopExpanded;
+
+      updateInheritedTelop();
+
+    });
 
 }
 
@@ -8364,6 +8484,8 @@ function setupFeedback() {
   setupFeedback();
 
   setupJumpModal();
+
+  setupInheritedTelop();
 
   const restored =
     loadStateFromStorage();
