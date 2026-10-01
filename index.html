@@ -122,6 +122,10 @@ button {
   display: none;
 }
 
+.modal.center {
+  align-items: center;
+}
+
 .modal-card {
   width: min(560px, 100%);
   max-height: calc(100vh - 24px);
@@ -741,12 +745,8 @@ body.wide-step .container {
   margin: 22px 0 8px;
   padding: 11px 14px;
   border-radius: 14px;
-  background: var(--black);
-  color: #ffffff;
-}
-
-.scenario-title.change {
   background: #3f4a5a;
+  color: #ffffff;
 }
 
 .scenario-name {
@@ -780,8 +780,8 @@ body.wide-step .container {
 }
 
 .rank-badge.top {
-  background: #f59e0b;
-  color: #111111;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .result.has-badge > .tags:first-of-type,
@@ -870,7 +870,7 @@ body.wide-step .container {
 
 <div
   id="jumpModal"
-  class="modal hidden"
+  class="modal center hidden"
   role="dialog"
   aria-modal="true"
   aria-labelledby="jumpTitle"
@@ -2300,7 +2300,7 @@ const state = {
 
   devices: [],
 
-  usagePriority: null,
+  usagePriority: "average",
 
   resultsExpanded: {
     sim: false,
@@ -4325,6 +4325,12 @@ function render() {
 
   if (state.step === 9) {
 
+    /* 最初は「平均を優先」を選んだ状態で表示する */
+
+    if (!state.usagePriority) {
+      state.usagePriority = "average";
+    }
+
     const candidateGroups =
       getCandidateGroups();
 
@@ -4554,6 +4560,21 @@ function render() {
 
       };
 
+      /* 「もっと見る」が出ないとき（候補が2件以下）の説明 */
+
+      const noMoreNote = label => `
+        <div class="note">
+          条件に合う${label}の候補は以上です。
+          ${
+            label === "MNP" &&
+            state.devices.includes("iPhone 17") &&
+            !["Y!mobile", "UQ mobile"].includes(state.currentCarrier)
+            ? "（iPhone 17はY!mobile・UQへのMNPでは購入できません）"
+            : ""
+          }
+        </div>
+      `;
+
       const mnpHasMore =
         mnpGroups.some(g => g.candidates.length > 2);
 
@@ -4595,7 +4616,7 @@ function render() {
           ${
             mnpHasMore
             ? moreButton("mnp")
-            : ""
+            : noMoreNote("MNP")
           }
 
 
@@ -4613,7 +4634,7 @@ function render() {
           ${
             changeHasMore
             ? moreButton("change")
-            : ""
+            : noMoreNote("機種変更")
           }
 
 
@@ -5873,7 +5894,7 @@ function bindEvents() {
 
         state.devices = [];
 
-        state.usagePriority = null;
+        state.usagePriority = "average";
 
         state.resultsExpanded = {
           sim: false,
