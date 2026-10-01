@@ -793,9 +793,14 @@ body.wide-step .container {
 
 .person-nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-self: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-right: 8px;
+}
+
+.person-nav:empty {
+  display: none;
 }
 
 .person-btn {
@@ -839,6 +844,18 @@ body.wide-step .container {
 
 @media (max-width: 560px) {
 
+  /* キャラクター横のスペースを広げて名前が折り返さないように */
+
+  .mascot-banner {
+    padding-right: 4px;
+  }
+
+  .person-btn {
+    max-width: 120px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
   .choice-grid.three {
     grid-template-columns: 1fr 1fr;
   }
@@ -881,6 +898,7 @@ body.wide-step .container {
 
 <div class="mascot-banner">
   <div id="customerBanner" class="customer-banner"></div>
+  <div id="personNav" class="person-nav"></div>
   <button
     type="button"
     class="mascot-button"
@@ -3543,7 +3561,6 @@ function updateCustomerBanner() {
   if (total > 1) {
 
     personNavHtml =
-      `<div class="person-nav">` +
       Array.from({ length: total }, (_, i) => {
 
         const name =
@@ -3566,15 +3583,29 @@ function updateCustomerBanner() {
           </button>
         `;
 
-      }).join("") +
-      `</div>`;
+      }).join("");
+
+  }
+
+  /* お客様ごとのボタンはキャラクターのすぐ左に縦に並べる */
+
+  const personNav =
+    document.getElementById("personNav");
+
+  if (personNav) {
+
+    personNav.innerHTML = personNavHtml;
+    bindPersonButtons(personNav);
 
   }
 
   if (state.step === 0) {
 
-    banner.innerHTML = personNavHtml;
-    bindPersonButtons(banner);
+    banner.innerHTML =
+      total > 1
+      ? `<div class="customer-count">${state.consultNumber}人目</div>`
+      : "";
+
     return;
 
   }
@@ -3603,11 +3634,7 @@ function updateCustomerBanner() {
     : "";
 
   banner.innerHTML =
-    total > 1
-    ? personNavHtml + subHtml
-    : countHtml + nameHtml + subHtml;
-
-  bindPersonButtons(banner);
+    countHtml + nameHtml + subHtml;
 
 }
 
