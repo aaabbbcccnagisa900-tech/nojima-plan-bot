@@ -2376,6 +2376,8 @@ function snapshotConsultation() {
 
     studentNote: best.studentNote || null,
 
+    missedDiscounts: best.missedDiscounts || [],
+
     twoYearTotal:
       typeof best.twoYearTotal === "number"
       ? best.twoYearTotal + callPrice * 24
@@ -3523,6 +3525,17 @@ function priceScheduleHtml(
           <span>${money(segment.price)}/月</span>
         </div>
       `).join("")}
+
+      ${
+        (plan.missedDiscounts || []).map(discount => `
+          <div>
+            ※ご家族がドコモなら${discount.label}で、
+            ${discount.fromMonth}〜${discount.toMonth}ヶ月目は
+            <b>${money(Math.max(0, plan.communication - discount.amount))}/月</b>
+            になります（家族割の画面でドコモを2回線以上にすると反映されます）
+          </div>
+        `).join("")
+      }
 
       ${
         plan.studentNote
@@ -7448,19 +7461,36 @@ function calculatePlans(
      * 初月の料金からは引かない
      */
 
-    (plan.periodDiscounts || []).forEach(discount => {
+    /* 条件を満たさず付かなかった期間限定の割引（案内用） */
 
-      if (
-        discount.requiresFamily &&
-        (state.familyCounts[carrierGroup(plan.carrier)] || 0) < 2
-      ) {
-        return;
-      }
+    const missedDiscounts = [];
+
+    (plan.periodDiscounts || []).forEach(discount => {
 
       const amount =
         Array.isArray(discount.amounts)
         ? (discount.amounts[index] || 0)
         : discount.amount;
+
+      if (
+        discount.requiresFamily &&
+        (state.familyCounts[carrierGroup(plan.carrier)] || 0) < 2
+      ) {
+
+        if (amount) {
+
+          missedDiscounts.push({
+            label: discount.label,
+            amount: amount,
+            fromMonth: discount.fromMonth || 1,
+            toMonth: discount.toMonth
+          });
+
+        }
+
+        return;
+
+      }
 
       if (!amount) {
         return;
@@ -7716,6 +7746,9 @@ function calculatePlans(
 
       studentNote:
         plan.studentNote || null,
+
+      missedDiscounts:
+        missedDiscounts,
 
       planNote:
         plan.planNote || null
