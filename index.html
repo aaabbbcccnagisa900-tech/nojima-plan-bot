@@ -6039,6 +6039,50 @@ function render() {
         `).join("")}
 
 
+        <button
+          type="button"
+          class="secondary full-width-btn"
+          id="familyConsultButton"
+        >
+          追加で家族をコンサルする
+        </button>
+
+        <div
+          id="inheritChoice"
+          class="result hidden"
+        >
+
+          <div class="plan-name">
+            カード・光回線・でんきの情報を引き継ぎますか？
+          </div>
+
+          <div class="note">
+            引き継ぐと、次の方はカード・光回線・でんきの質問を省略します
+          </div>
+
+          <div class="actions">
+
+            <button
+              type="button"
+              class="secondary inherit-btn"
+              data-inherit="no"
+            >
+              引き継がない
+            </button>
+
+            <button
+              type="button"
+              class="primary inherit-btn"
+              data-inherit="yes"
+            >
+              引き継ぐ
+            </button>
+
+          </div>
+
+        </div>
+
+
         <div class="actions">
 
           <button
